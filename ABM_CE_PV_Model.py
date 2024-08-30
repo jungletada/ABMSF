@@ -365,6 +365,7 @@ class ABM_CE_PV(Model):
         self.prod_n_recyc_node_degree = prod_n_recyc_node_degree
         self.prod_n_recyc_network_type = prod_n_recyc_network_type
         self.num_refurbishers = num_refurbishers
+        
         self.init_eol_rate = init_eol_rate
         self.init_purchase_choice = init_purchase_choice
         self.clock = 0
@@ -383,6 +384,7 @@ class ABM_CE_PV(Model):
         self.fsthand_mkt_pric = fsthand_mkt_pric
         self.fsthand_mkt_pric_reg_param = fsthand_mkt_pric_reg_param
         self.repairability = repairability
+        
         self.total_waste = 0
         self.total_yearly_new_products = 0
         self.sold_repaired_waste = 0
@@ -391,6 +393,7 @@ class ABM_CE_PV(Model):
         self.consumer_used_product = 0
         self.recycler_repairable_waste = 0
         self.yearly_repaired_waste = 0
+        
         self.imperfect_substitution = imperfect_substitution
         perceived_behavioral_control = [np.nan] * len(all_EoL_pathways)
         # Adjacency matrix of trust network: trust of row index into column

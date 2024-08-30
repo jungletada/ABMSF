@@ -85,7 +85,7 @@ def run_model(number_run, number_steps):
                 "Copper": 0.97, "Insulated cable": 1., "Silicon": 0.97,
                 "Silver": 0.94})
             
-        for i in range(number_steps):
+        for _ in range(number_steps):
             model.step()
         # Get results in a pandas DataFrame
         results_model = model.datacollector.get_model_vars_dataframe()

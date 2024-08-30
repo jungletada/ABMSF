@@ -1,0 +1,192 @@
+{
+    "seed": null,
+    "calibration_n_sensitivity": 1,
+    "calibration_n_sensitivity_2": 1,
+    "calibration_n_sensitivity_3": 1,
+    "calibration_n_sensitivity_4": 1,
+    "calibration_n_sensitivity_5": 1,
+    "num_consumers": 1000,
+    "consumers_node_degree": 10,
+    "consumers_network_type": "small-world",
+    "rewiring_prob": 0.1,
+    "num_recyclers": 16,
+    "num_producers": 60,
+    "prod_n_recyc_node_degree": 5,
+    "prod_n_recyc_network_type": "small-world",
+    "num_refurbishers": 15,
+    "consumers_distribution": {
+        "residential": 1,
+        "commercial": 0.0,
+        "utility": 0.0
+    },
+    "init_eol_rate": {
+        "repair": 0.005,
+        "sell": 0.01,
+        "recycle": 0.1,
+        "landfill": 0.4425,
+        "hoard": 0.4425
+    },
+    "init_purchase_choice": {
+        "new": 0.9995,
+        "used": 0.0005,
+        "certified": 0
+    },
+    "total_number_product": [38, 38, 38, 38, 38, 38, 38, 139, 251, 378, 739, 1670, 2935, 4146, 5432, 6525, 3609, 4207, 4905, 5719],
+    "product_distribution": {
+        "residential": 1,
+        "commercial": 0.0,
+        "utility": 0.0
+    },
+    "product_growth": [0.166, 0.045],
+    "growth_threshold": 10,
+    "failure_rate_alpha": [2.4928, 5.3759, 3.93495],
+    "hoarding_cost": [0, 0.001, 0.0005],
+    "landfill_cost": [
+        0.0089, 0.0074, 0.0071, 0.0069, 0.0056, 0.0043,
+        0.0067, 0.0110, 0.0085, 0.0082, 0.0079, 0.0074, 0.0069,
+        0.0068, 0.0068, 0.0052, 0.0052, 0.0051, 0.0074, 0.0062,
+        0.0049, 0.0049, 0.0047, 0.0032, 0.0049, 0.0065, 0.0064,
+        0.0062, 0.0052, 0.0048, 0.0048, 0.0044, 0.0042, 0.0039,
+        0.0039, 0.0045, 0.0055, 0.0050, 0.0049, 0.0044, 0.0044,
+        0.0039, 0.0033, 0.0030, 0.0041, 0.0050, 0.0040, 0.0040,
+        0.0038, 0.0033
+    ],
+    "theory_of_planned_behavior": {
+        "residential": true,
+        "commercial": true,
+        "utility": true
+    },
+    "w_sn_eol": 0.27,
+    "w_pbc_eol": 0.44,
+    "w_a_eol": 0.39,
+    "w_sn_reuse": 0.497,
+    "w_pbc_reuse": 0.382,
+    "w_a_reuse": 0.464,
+    "product_lifetime": 30,
+    "all_EoL_pathways": {
+        "repair": true,
+        "sell": true,
+        "recycle": true,
+        "landfill": true,
+        "hoard": true
+    },
+    "max_storage": [1, 8, 4],
+    "att_distrib_param_eol": [0.544, 0.1],
+    "att_distrib_param_reuse": [0.223, 0.262],
+    "original_recycling_cost": [0.106, 0.128, 0.117],
+    "recycling_learning_shape_factor": -0.39,
+    "repairability": 0.55,
+    "original_repairing_cost": [0.1, 0.45, 0.23],
+    "repairing_learning_shape_factor": -0.31,
+    "scndhand_mkt_pric_rate": [0.4, 0.2],
+    "fsthand_mkt_pric": 0.45,
+    "fsthand_mkt_pric_reg_param": [1, 0.04],
+    "refurbisher_margin": [0.4, 0.6, 0.5],
+    "purchase_choices": {
+        "new": true,
+        "used": true,
+        "certified": false
+    },
+    "init_trust_boundaries": [-1, 1],
+    "social_event_boundaries": [-1, 1],
+    "social_influencability_boundaries": [0, 1],
+    "trust_threshold": 0.5,
+    "knowledge_threshold": 0.5,
+    "willingness_threshold": 0.5,
+    "self_confidence_boundaries": [0, 1],
+    "product_mass_fractions": {
+        "Product": 1,
+        "Aluminum": 0.08,
+        "Glass": 0.76,
+        "Copper": 0.01,
+        "Insulated cable": 0.012,
+        "Silicon": 0.036,
+        "Silver": 0.00032
+    },
+    "established_scd_mkt": {
+        "Product": true,
+        "Aluminum": true,
+        "Glass": true,
+        "Copper": true,
+        "Insulated cable": true,
+        "Silicon": false,
+        "Silver": false
+    },
+    "scd_mat_prices": {
+        "Product": [null, null, null],
+        "Aluminum": [0.66, 1.98, 1.32],
+        "Glass": [0.01, 0.06, 0.035],
+        "Copper": [3.77, 6.75, 5.75],
+        "Insulated cable": [3.22, 3.44, 3.33],
+        "Silicon": [2.20, 3.18, 2.69],
+        "Silver": [453, 653, 582]
+    },
+    "virgin_mat_prices": {
+        "Product": [null, null, null],
+        "Aluminum": [1.76, 2.51, 2.14],
+        "Glass": [0.04, 0.07, 0.055],
+        "Copper": [4.19, 7.50, 6.39],
+        "Insulated cable": [3.22, 3.44, 3.33],
+        "Silicon": [2.20, 3.18, 2.69],
+        "Silver": [453, 653, 582]
+    },
+    "material_waste_ratio": {
+        "Product": 0.0,
+        "Aluminum": 0.0,
+        "Glass": 0.0,
+        "Copper": 0.0,
+        "Insulated cable": 0.0,
+        "Silicon": 0.4,
+        "Silver": 0.0
+    },
+    "recovery_fractions": {
+        "Product": null,
+        "Aluminum": 0.92,
+        "Glass": 0.85,
+        "Copper": 0.72,
+        "Insulated cable": 1.0,
+        "Silicon": 0.0,
+        "Silver": 0.0
+    },
+    "product_average_wght": 0.1,
+    "mass_to_function_reg_coeff": 0.03,
+    "recycling_states": [
+        "Texas", "Arizona", "Oregon", "Oklahoma",
+        "Wisconsin", "Ohio", "Kentucky", "South Carolina"
+    ],
+    "transportation_cost": 0.0314,
+    "used_product_substitution_rate": [0.6, 1, 0.8],
+    "imperfect_substitution": 0,
+    "epr_business_model": false,
+    "recycling_process": {
+        "frelp": false,
+        "asu": false,
+        "hybrid": false
+    },
+    "industrial_symbiosis": false,
+    "dynamic_lifetime_model": {
+        "Dynamic lifetime": false,
+        "d_lifetime_intercept": 15.9,
+        "d_lifetime_reg_coeff": 0.87,
+        "Seed": false,
+        "Year": 5,
+        "avg_lifetime": 50
+    },
+    "extended_tpb": {
+        "Extended tpb": false,
+        "w_convenience": 0.28,
+        "w_knowledge": -0.51,
+        "knowledge_distrib": [0.5, 0.49]
+    },
+    "seeding": {
+        "Seeding": false,
+        "Year": 10,
+        "number_seed": 50
+    },
+    "seeding_recyc": {
+        "Seeding": false,
+        "Year": 10,
+        "number_seed": 50,
+        "discount": 0.35
+    }
+}
