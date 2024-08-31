@@ -84,14 +84,14 @@ def run_model(number_run, number_steps):
                 "Product": np.nan, "Aluminum": 0.994, "Glass": 0.98,
                 "Copper": 0.97, "Insulated cable": 1., "Silicon": 0.97,
                 "Silver": 0.94})
-            
+        
         for _ in range(number_steps):
             model.step()
         # Get results in a pandas DataFrame
         results_model = model.datacollector.get_model_vars_dataframe()
         results_agents = model.datacollector.get_agent_vars_dataframe()
-        results_model.to_csv("results\\Results_model_run%s.csv" % j)
-        results_agents.to_csv("results\\Results_agents.csv")
+        results_model.to_csv("results/Results_model_run%s.csv" % j)
+        results_agents.to_csv("results/Results_agents.csv")
         # Draw figures
         draw_graphs(False, False, model, results_agents, results_model)
         print("Run", j+1, "out of", number_run)
@@ -139,4 +139,4 @@ def draw_graphs(network, figures, model, results_agents, results_model):
         plt.show()  # draw graph as desired and plot outputs
 
 
-run_model(30, 31)
+run_model(number_run=10, number_steps=31)

@@ -223,8 +223,8 @@ class ABM_CE_PV(Model):
                  consumers_distribution={"residential": 1,
                                          "commercial": 0., "utility": 0.},
                  init_eol_rate={"repair": 0.005, "sell": 0.01,
-                                   "recycle": 0.1, "landfill": 0.4425,
-                                   "hoard": 0.4425},
+                                "recycle": 0.1, "landfill": 0.4425,
+                                "hoard": 0.4425},
                  init_purchase_choice={"new": 0.9995, "used": 0.0005,
                                        "certified": 0},
                  total_number_product=[38, 38, 38, 38, 38, 38, 38, 139, 251,
@@ -357,21 +357,25 @@ class ABM_CE_PV(Model):
         np.random.seed(self.seed)
         random.seed(self.seed)
         self.num_consumers = num_consumers
-        self.consumers_node_degree = consumers_node_degree
-        self.consumers_network_type = consumers_network_type
-        self.num_recyclers = num_recyclers
-        self.num_producers = num_producers
-        self.num_prod_n_recyc = num_recyclers + num_producers
+        self.consumers_node_degree = consumers_node_degree   
+        self.consumers_network_type = consumers_network_type 
+        
+        self.num_recyclers = num_recyclers # 回收商
+        self.num_producers = num_producers # 制造商
+        self.num_prod_n_recyc = num_recyclers + num_producers # learning effect
+        self.num_refurbishers = num_refurbishers # 二手商
+        
         self.prod_n_recyc_node_degree = prod_n_recyc_node_degree
         self.prod_n_recyc_network_type = prod_n_recyc_network_type
-        self.num_refurbishers = num_refurbishers
         
-        self.init_eol_rate = init_eol_rate
-        self.init_purchase_choice = init_purchase_choice
-        self.clock = 0
-        self.total_number_product = total_number_product
+        self.init_eol_rate = init_eol_rate # dictionary with initial end-of-life (EOL) ratios
+        self.init_purchase_choice = init_purchase_choice # dictionary with initial purchase ratios
+        
+        self.total_number_product = total_number_product # a list for the whole population
         self.copy_total_number_product = self.total_number_product.copy()
         self.mass_to_function_reg_coeff = mass_to_function_reg_coeff
+        
+        self.clock = 0
         self.iteration = 0
         self.running = True
         self.color_map = []
@@ -396,11 +400,13 @@ class ABM_CE_PV(Model):
         
         self.imperfect_substitution = imperfect_substitution
         perceived_behavioral_control = [np.nan] * len(all_EoL_pathways)
+        
         # Adjacency matrix of trust network: trust of row index into column
         self.trust_prod = np.asmatrix(np.random.uniform(
             init_trust_boundaries[0], init_trust_boundaries[1],
             (self.num_prod_n_recyc, self.num_prod_n_recyc)))
         np.fill_diagonal(self.trust_prod, 0)
+        
         self.social_event_boundaries = social_event_boundaries
         self.trust_threshold = trust_threshold
         self.knowledge_threshold = knowledge_threshold
@@ -412,17 +418,19 @@ class ABM_CE_PV(Model):
         self.established_scd_mkt = established_scd_mkt
         self.recovery_fractions = recovery_fractions
         self.product_average_wght = product_average_wght
-        self.dynamic_product_average_wght = product_average_wght
+        self.dynamic_product_average_wght = product_average_wght # (kg/fu), MCE: module efficiency
         self.yearly_product_wght = product_average_wght
-        self.transportation_cost = transportation_cost
+        self.transportation_cost = transportation_cost # ($/t.km) Transportation cost per unit distance
         self.epr_business_model = epr_business_model
         self.average_landfill_cost = sum(landfill_cost) / len(landfill_cost)
         self.industrial_symbiosis = industrial_symbiosis
         self.installer_recycled_amount = 0
+        
         # Change eol_pathways depending on business model
         if self.epr_business_model:
             self.all_EoL_pathways["landfill"] = False
             self.industrial_symbiosis = False
+        
         # Dynamic lifetime model
         self.dynamic_lifetime_model = dynamic_lifetime_model
         self.extended_tpb = extended_tpb
@@ -434,29 +442,45 @@ class ABM_CE_PV(Model):
         self.update_dynamic_lifetime()
         self.original_recycling_cost = original_recycling_cost
         self.recycling_process = recycling_process
+        
         self.list_consumer_id = list(range(num_consumers))
         random.shuffle(self.list_consumer_id)
         self.list_consumer_id_seed = list(range(num_consumers))
         random.shuffle(self.list_consumer_id_seed)
-        # Change recovery fractions and recycling costs depending on recycling
-        # process
+        
+        # Change recovery fractions and recycling costs depending on recycling process
         self.recycling_process_change()
         self.product_growth = product_growth
         self.growth_threshold = growth_threshold
-        # Builds graph and defines scheduler
-        self.H1 = self.init_network(self.consumers_network_type,
-                                   self.num_consumers,
-                                   self.consumers_node_degree, rewiring_prob)
-        self.H2 = self.init_network(self.prod_n_recyc_network_type,
-                                   self.num_prod_n_recyc,
-                                   self.prod_n_recyc_node_degree,
-                                    rewiring_prob)
-        self.H3 = self.init_network("complete graph", self.num_refurbishers,
-                                    "NaN", rewiring_prob)
+        
+        # Build graphs 
+        # H1: Consumer's network
+        self.H1 = self.init_network(
+            network=self.consumers_network_type,
+            nodes=self.num_consumers,
+            node_degree=self.consumers_node_degree, 
+            rewiring_prob=rewiring_prob)
+        
+        # H2: Recycler's network
+        self.H2 = self.init_network(
+            network=self.prod_n_recyc_network_type,
+            nodes=self.num_prod_n_recyc,
+            node_degree=self.prod_n_recyc_node_degree,
+            rewiring_prob=rewiring_prob)
+        
+        self.H3 = self.init_network(
+            network="complete graph", 
+            nodes=self.num_refurbishers,
+            node_degree="NaN", 
+            rewiring_prob=rewiring_prob)
+        
         self.G = nx.disjoint_union(self.H1, self.H2)
         self.G = nx.disjoint_union(self.G, self.H3)
         self.grid = NetworkGrid(self.G)
+        
+        # Defines scheduler
         self.schedule = BaseScheduler(self)
+        
         # Compute distance for the repair, sell, recycle, landfill and storage
         # pathways. Assumptions: 1) Only certain states have recycling
         # facilities, 2) The refurbisher who performs repair and
@@ -485,65 +509,103 @@ class ABM_CE_PV(Model):
         nodes_states_dic = \
             dict(zip(list(self.states_graph.nodes),
                      list(pd.read_csv("StatesAdjacencyMatrix.csv"))))
-        self.states_graph = nx.relabel_nodes(self.states_graph,
-                                             nodes_states_dic)
+        self.states_graph = nx.relabel_nodes(self.states_graph, nodes_states_dic)
         self.recycling_states = recycling_states
+        
         distances_to_recyclers = []
         distances_to_recyclers = self.shortest_paths(
             self.recycling_states, distances_to_recyclers)
-        self.mn_mx_av_distance_to_recycler = [
-            min(distances_to_recyclers), max(distances_to_recyclers),
+        
+        self.mn_mx_av_distance_to_recycler = [ # minimum, maximum, average
+            min(distances_to_recyclers), 
+            max(distances_to_recyclers),
             sum(distances_to_recyclers) / len(distances_to_recyclers)]
+        
         # Compute transportation costs
         self.transportation_cost_rcl = [
-            x * self.transportation_cost / 1E3 *
-            self.dynamic_product_average_wght for x in
+            x * self.transportation_cost / 1E3 * self.dynamic_product_average_wght for x in
             self.mn_mx_av_distance_to_recycler]
+        
         self.transportation_cost_rpr_ldf = self.mean_distance_within_state * \
             self.transportation_cost / 1E3 * self.dynamic_product_average_wght
+        
         # Add transportation costs to pathways' costs
+        # Recycling_cost
         self.original_recycling_cost = [sum(x) for x in zip(
             self.original_recycling_cost, self.transportation_cost_rcl)]
-        original_repairing_cost = [x + self.transportation_cost_rpr_ldf for
-                                   x in original_repairing_cost]
-        landfill_cost = [x + self.transportation_cost_rpr_ldf for x in
-                         landfill_cost]
+        
+        original_repairing_cost = [
+            x + self.transportation_cost_rpr_ldf for x in original_repairing_cost]
+        # Landfilling cost
+        landfill_cost = [x + self.transportation_cost_rpr_ldf for x in landfill_cost]
 
         # Create agents, G nodes labels are equal to agents' unique_ID
         for node in self.G.nodes():
-            if node < self.num_consumers:
-                a = Consumers(node, self, product_growth, failure_rate_alpha,
-                              perceived_behavioral_control, w_sn_eol,
-                              w_pbc_eol, w_a_eol, w_sn_reuse, w_pbc_reuse,
-                              w_a_reuse, landfill_cost, hoarding_cost,
-                              used_product_substitution_rate,
-                              att_distrib_param_eol, att_distrib_param_reuse,
-                              max_storage, consumers_distribution,
-                              product_distribution)
+            ###################### Consumers ######################
+            if node < self.num_consumers: 
+                a = Consumers(
+                    unique_id=node, # agent ID ~ node ID in the network
+                    model=self,     # ABM_CE_PV_Model
+                    product_growth=product_growth, # [List] piecewise function (ratio)
+                    failure_rate_alpha=failure_rate_alpha, # [List] triangular distribution
+                    perceived_behavioral_control=perceived_behavioral_control, # [List] costs of each EoL pathway
+                    w_sn_eol=w_sn_eol,      # weight of subjective norm in agents'decisions
+                    w_pbc_eol=w_pbc_eol,    # weight of perceived behavioral control in agents'decisions
+                    w_a_eol=w_a_eol,        # weight of attitude in the agents'decisions
+                    w_sn_reuse=w_sn_reuse,  # weight of subjective norm in remanufactured product purchase decision
+                    w_pbc_reuse=w_pbc_reuse,# weight for perceived behavioral control in remanufactured product purchase decision
+                    w_a_reuse=w_a_reuse,    # weight for attitude in remanufactured product purchase decision
+                    landfill_cost=landfill_cost, # [List] triangular distribution ($/fu)
+                    hoarding_cost=hoarding_cost, # [List] triangular distribution ($/fu)
+                    used_product_substitution_rate=used_product_substitution_rate, # [List] triangular distribution (ratio)
+                    att_distrib_param_eol=att_distrib_param_eol,      # [List] bounded normal distribution
+                    att_distrib_param_reuse=att_distrib_param_reuse,  # [List] bounded normal distribution
+                    max_storage=max_storage, # [List] triangular distribution (years)
+                    consumers_distribution=consumers_distribution, # allocation of different types of consumers
+                    product_distribution=product_distribution) # ratios of product among consumer types
+                
                 self.schedule.add(a)
-                # Add the agent to the node
-                self.grid.place_agent(a, node)
-            elif node < self.num_recyclers + self.num_consumers:
-                b = Recyclers(node, self, self.original_recycling_cost,
+                self.grid.place_agent(a, node)  # Add the agent to the node
+                
+            elif node < self.num_recyclers + self.num_consumers: 
+                ###################### Recyclers ######################
+                b = Recyclers(node, 
+                              self, 
+                              self.original_recycling_cost,
                               init_eol_rate,
                               recycling_learning_shape_factor,
                               social_influencability_boundaries)
                 self.schedule.add(b)
                 self.grid.place_agent(b, node)
+                
             elif node < self.num_prod_n_recyc + self.num_consumers:
-                c = Producers(node, self, scd_mat_prices, virgin_mat_prices,
-                              social_influencability_boundaries,
-                              self_confidence_boundaries)
+                ###################### Producers ######################
+                c = Producers(
+                    node, 
+                    self, 
+                    scd_mat_prices, 
+                    virgin_mat_prices,
+                    social_influencability_boundaries,
+                    self_confidence_boundaries)
+                
                 self.schedule.add(c)
                 self.grid.place_agent(c, node)
-            else:
-                d = Refurbishers(node, self, original_repairing_cost,
-                                 init_eol_rate,
-                                 repairing_learning_shape_factor,
-                                 scndhand_mkt_pric_rate, refurbisher_margin,
-                                 max_storage)
+                
+            else: 
+                ###################### Refurbishers ######################
+                d = Refurbishers(
+                    node, 
+                    self, 
+                    original_repairing_cost,
+                    init_eol_rate,
+                    repairing_learning_shape_factor,
+                    scndhand_mkt_pric_rate, 
+                    refurbisher_margin,
+                    max_storage)
+                
                 self.schedule.add(d)
                 self.grid.place_agent(d, node)
+                
         # Draw initial graph
         # nx.draw(self.G, with_labels=True)
         # plt.show()
@@ -691,10 +753,10 @@ class ABM_CE_PV(Model):
     def init_network(self, network, nodes, node_degree, rewiring_prob):
         """
         Set up model's industrial symbiosis (IS) and consumers networks.
+        建立工业共生模式（IS）和消费者网络。
         """
         if network == "small-world":
-            return nx.watts_strogatz_graph(nodes, node_degree, rewiring_prob,
-                                           seed=random.seed(self.seed))
+            return nx.watts_strogatz_graph(nodes, node_degree, rewiring_prob, seed=random.seed(self.seed))
         elif network == "complete graph":
             return nx.complete_graph(nodes)
         if network == "random":
@@ -989,6 +1051,7 @@ class ABM_CE_PV(Model):
         self.total_yearly_new_products = 0
         self.consumer_used_product = 0
         self.yearly_repaired_waste = 0
+        
         self.dynamic_product_average_wght = \
             self.average_mass_per_function_model(
                 self.copy_total_number_product)
@@ -996,6 +1059,8 @@ class ABM_CE_PV(Model):
         self.datacollector.collect(self)
         # Refers to agent step function
         self.update_dynamic_lifetime()
+        
         self.average_price_per_function_model()
+        
         self.schedule.step()
         self.clock = self.clock + 1

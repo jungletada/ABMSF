@@ -57,7 +57,7 @@ class Consumers(Agent):
         att_distrib_param_eol (a list for a bounded normal distribution), (
             default=[0.53, 0.12]). From model's calibration step (mean),
             Saphores 2012 (standard deviation).
-        att_distrib_param_eol (a list for a bounded normal distribution), (
+        att_distrib_param_reuse (a list for a bounded normal distribution), (
             default=[0.35, 0.2]). From model's calibration step (mean),
             Abbey et al. 2016 (standard deviation).
         max_storage (a list for a triangular distribution) (years), (default=
@@ -106,27 +106,35 @@ class Consumers(Agent):
         self.number_used_prod_hoarded = 0
         self.product_storage_to_other = 0
         self.product_years_storage = []
-        self.max_storage = np.random.triangular(max_storage[0], max_storage[2],
-                                                max_storage[1])
+        self.max_storage = np.random.triangular(
+            max_storage[0], max_storage[2], max_storage[1])
+        
         self.number_product_new = 0
         self.number_product_used = 0
         self.number_product_certified = 0
-        self.EoL_pathway = self.initial_choice(self.model.init_eol_rate)
+        
+        # Initiate EoL and purchase choice chosen by agents.
+        self.EoL_pathway = self.initial_choice(list_choice=self.model.init_eol_rate)
         self.used_EoL_pathway = self.EoL_pathway
-        self.purchase_choice = self.initial_choice(
-            self.model.init_purchase_choice)
-        self.number_product = [x / model.num_consumers * 1E6 for x
-                               in model.total_number_product]
+        self.purchase_choice = self.initial_choice(list_choice=self.model.init_purchase_choice)
+        
+        # Count number of new and used products 
+        # total_number_product-> time series of product quantity
+        self.number_product = [x / model.num_consumers * 1E6 for x in model.total_number_product]
         self.number_product_hard_copy = self.number_product.copy()
-        self.product_distribution = product_distribution
+        self.product_distribution = product_distribution # [Dict] ratios of product among consumer types
+        
+        ### New products
         self.new_products = self.number_product.copy()
         self.new_products_hard_copy = self.new_products.copy()
         self.new_products_mass = \
             self.mass_per_function_model(self.new_products_hard_copy)
+        ### Used products    
         self.used_products = [0] * len(self.number_product)
         self.used_products_hard_copy = self.used_products.copy()
         self.used_products_mass = \
-            self.mass_per_function_model(self.used_products_hard_copy)
+            self.mass_per_function_model(self.used_products_hard_copy) # Convert end-of-life volume in Wp to kg
+        
         self.product_growth_list = product_growth
         self.used_product_substitution_rate = \
             np.random.triangular(used_product_substitution_rate[0],
@@ -134,25 +142,30 @@ class Consumers(Agent):
                                  used_product_substitution_rate[1])
         self.product_growth = self.product_growth_list[0]
         self.failure_rate_alpha = \
-            np.random.triangular(failure_rate_alpha[0], failure_rate_alpha[2],
+            np.random.triangular(failure_rate_alpha[0], 
+                                 failure_rate_alpha[2],
                                  failure_rate_alpha[1])
+        
         self.perceived_behavioral_control = perceived_behavioral_control
         self.copy_perceived_behavioral_control = \
             self.perceived_behavioral_control.copy()
+            
         self.w_sn_eol = w_sn_eol
         self.w_pbc_eol = w_pbc_eol
         self.w_a_eol = w_a_eol
         self.w_sn_reuse = w_sn_reuse
         self.w_pbc_reuse = w_pbc_reuse
         self.w_a_reuse = w_a_reuse
+        
         if self.EoL_pathway == "landfill" or self.EoL_pathway == "hoard":
             model.color_map.append('blue')
         else:
             model.color_map.append('green')
-        self.recycling_facility_id = model.num_consumers + random.randrange(
-            model.num_recyclers)
+        # Get ID for recyclers and refurbisher
+        self.recycling_facility_id = model.num_consumers + random.randrange(model.num_recyclers)
         self.refurbisher_id = model.num_consumers + model.num_prod_n_recyc + \
             random.randrange(model.num_refurbishers)
+            
         self.landfill_cost = random.choice(landfill_cost)
         #self.landfill_cost = np.random.triangular(
          #   landfill_cost[0], landfill_cost[2], landfill_cost[1])
@@ -160,8 +173,7 @@ class Consumers(Agent):
 
         # HERE
         self.hoarding_cost = np.random.triangular(
-            hoarding_cost[0], hoarding_cost[2], hoarding_cost[1]) * \
-            self.max_storage
+            hoarding_cost[0], hoarding_cost[2], hoarding_cost[1]) * self.max_storage
 
         #self.hoarding_cost = \
         #    float(truncnorm((0 - hoarding_cost[0]) /
@@ -173,30 +185,32 @@ class Consumers(Agent):
         # HERE
 
         self.attitude_level = \
-            self.attitude_level_distribution((0 - att_distrib_param_eol[0]) /
-                                             att_distrib_param_eol[1],
-                                             (1 - att_distrib_param_eol[0]) /
-                                             att_distrib_param_eol[1],
-                                             att_distrib_param_eol[0],
-                                             att_distrib_param_eol[1])
+            self.attitude_level_distribution(
+                a=(0 - att_distrib_param_eol[0]) / att_distrib_param_eol[1],
+                b=(1 - att_distrib_param_eol[0]) / att_distrib_param_eol[1],
+                loc=att_distrib_param_eol[0],
+                scale=att_distrib_param_eol[1])
         self.attitude_levels_pathways = [0] * len(self.model.all_EoL_pathways)
+        
         self.attitude_level_reuse = \
-            self.attitude_level_distribution((0 - att_distrib_param_reuse[0]) /
-                                             att_distrib_param_reuse[1],
-                                             (1 - att_distrib_param_reuse[0]) /
-                                             att_distrib_param_reuse[1],
-                                             att_distrib_param_reuse[0],
-                                             att_distrib_param_reuse[1])
+            self.attitude_level_distribution(
+                (0 - att_distrib_param_reuse[0]) / att_distrib_param_reuse[1],
+                (1 - att_distrib_param_reuse[0]) / att_distrib_param_reuse[1],
+                att_distrib_param_reuse[0],
+                att_distrib_param_reuse[1])
+            
         self.purchase_choices = list(self.model.purchase_options.keys())
         self.attitude_levels_purchase = [0] * len(self.purchase_choices)
-        self.pbc_reuse = [self.model.fsthand_mkt_pric, np.nan,
-                          self.model.fsthand_mkt_pric]
+        self.pbc_reuse = [self.model.fsthand_mkt_pric, np.nan, self.model.fsthand_mkt_pric]
+        
         self.distances_to_customers = []
         self.distances_to_customers = self.model.shortest_paths(
             [random.choice(self.model.all_states)],
             self.distances_to_customers)
+        
         self.random_interstate_distance = random.choice(
             self.distances_to_customers)
+        
         self.agent_breed()
         self.product_storage_to_other_ref = 0
         self.waste = []
@@ -210,6 +224,38 @@ class Consumers(Agent):
         self.knowledge = self.extended_tpb_knowledge()
         #print("out func", self.knowledge)
 
+    def initial_choice(self, list_choice):
+            """
+            Initiate the EoL pathway and purchase choice chosen by agents.
+            """
+            total = 0
+            u_id = self.model.list_consumer_id[self.unique_id]
+            for key, value in list_choice.items():
+                # EoL=repair, sell, recycle, landfill, hoard
+                # Purchase=used, new
+                total += value * self.model.num_consumers
+                if u_id <= (total - 1):
+                    return key
+       
+    def mass_per_function_model(self, product_as_function):
+        """
+        Convert end-of-life volume in Wp to kg. Account for the year the
+        module was manufactured and the average weight-to-power ratio at that
+        time. The model from IRENA-IEA 2016 is used.
+        """
+        mass_conversion_coeffs = [
+            self.model.product_average_wght * exp(-self.model.mass_to_function_reg_coeff * x) 
+            for x in range(len(product_as_function))]
+        
+        product_as_mass = [product_as_function[i] * mass_conversion_coeffs[i]
+                            for i in range(len(product_as_function))]
+        
+        mass_eol = sum(product_as_mass)
+        self.weighted_average_mass_watt = sum(
+            [product_as_mass[i] / mass_eol * mass_conversion_coeffs[i] 
+                for i in range(len(mass_conversion_coeffs)) if mass_eol != 0])
+        return mass_eol      
+       
     def update_transport_costs(self):
         """
         Update transportation costs according to the (evolving) mass of waste.
@@ -264,17 +310,6 @@ class Consumers(Agent):
         knowledge_eol = [self.model.extended_tpb["w_knowledge"] * x for x in
                          knowledge_eol]
         return knowledge_eol
-
-    def initial_choice(self, list_choice):
-        """
-        Initiate the EoL pathway and purchase choice chosen by agents.
-        """
-        total = 0
-        u_id = self.model.list_consumer_id[self.unique_id]
-        for key, value in list_choice.items():
-            total += value * self.model.num_consumers
-            if u_id <= (total - 1):
-                return key
 
     def agent_breed(self):
         """
@@ -637,24 +672,6 @@ class Consumers(Agent):
         if installer:
             self.past_recycled_waste = self.number_product_recycled
 
-    def mass_per_function_model(self, product_as_function):
-        """
-        Convert end-of-life volume in Wp to kg. Account for the year the
-        module was manufactured and the average weight-to-power ratio at that
-        time. The model from IRENA-IEA 2016 is used.
-        """
-        mass_conversion_coeffs = [
-            self.model.product_average_wght * e**(
-                - self.model.mass_to_function_reg_coeff * x) for x in
-            range(len(product_as_function))]
-        product_as_mass = [product_as_function[i] * mass_conversion_coeffs[i]
-                           for i in range(len(product_as_function))]
-        mass_eol = sum(product_as_mass)
-        self.weighted_average_mass_watt = sum(
-            [product_as_mass[i] / mass_eol * mass_conversion_coeffs[i] for i
-             in range(len(mass_conversion_coeffs)) if mass_eol != 0])
-        return mass_eol
-
     def storage_management(self, limited_paths):
         """
         Decision to handle waste in one of the end of life pathway (except
@@ -704,8 +721,10 @@ class Consumers(Agent):
         """
         last_capacity_new = [0] * len(self.new_products_hard_copy)
         last_capacity_new[-1] = self.new_products_hard_copy[-1]
+        
         last_capacity_used = [0] * len(self.used_products_hard_copy)
         last_capacity_used[-1] = self.used_products_hard_copy[-1]
+        
         self.new_products_mass += \
             self.mass_per_function_model(last_capacity_new)
         self.used_products_mass += \
@@ -715,18 +734,22 @@ class Consumers(Agent):
         """
         Evolution of agent at each step
         """
+        
         self.product_mass_output_metrics()
         self.product_storage_to_other = 0
         self.product_storage_to_other_ref = 0
         self.update_transport_costs()
+        
         # Update product growth from a list:
         if self.model.clock > self.model.growth_threshold:
             self.product_growth = self.product_growth_list[1]
+        
         self.update_product_stock()
         self.yearly_prod_n_waste()
         self.update_perceived_behavioral_control()
         self.copy_perceived_behavioral_control = \
             self.perceived_behavioral_control.copy()
+        
         self.volume_used_products_purchased()
         self.update_product_eol("new")
         self.product_storage_to_other_ref = self.product_storage_to_other
