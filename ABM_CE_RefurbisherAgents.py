@@ -9,7 +9,7 @@ Agent - Refurbisher
 
 from mesa import Agent
 import numpy as np
-from ABM_CE_PV_RecyclerAgents import Recyclers
+from ABM_CE_RecyclerAgents import Recyclers
 import operator
 from scipy.stats import truncnorm
 

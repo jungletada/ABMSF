@@ -113,7 +113,7 @@ class Consumers(Agent):
         self.number_product_used = 0
         self.number_product_certified = 0
         
-        # Initiate EoL and purchase choice chosen by agents.
+        # Initiate EoL and purchase choice chosen by agents with a given ratio.
         self.EoL_pathway = self.initial_choice(list_choice=self.model.init_eol_rate)
         self.used_EoL_pathway = self.EoL_pathway
         self.purchase_choice = self.initial_choice(list_choice=self.model.init_purchase_choice)
@@ -127,26 +127,27 @@ class Consumers(Agent):
         ### New products
         self.new_products = self.number_product.copy()
         self.new_products_hard_copy = self.new_products.copy()
-        self.new_products_mass = \
-            self.mass_per_function_model(self.new_products_hard_copy)
+        #### Convert end-of-life volume in Wp to kg
+        self.new_products_mass = self.mass_per_function_model(self.new_products_hard_copy)
         ### Used products    
         self.used_products = [0] * len(self.number_product)
         self.used_products_hard_copy = self.used_products.copy()
-        self.used_products_mass = \
-            self.mass_per_function_model(self.used_products_hard_copy) # Convert end-of-life volume in Wp to kg
+        #### Convert end-of-life volume in Wp to kg
+        self.used_products_mass = self.mass_per_function_model(self.used_products_hard_copy) 
         
-        self.product_growth_list = product_growth
-        self.used_product_substitution_rate = \
-            np.random.triangular(used_product_substitution_rate[0],
-                                 used_product_substitution_rate[2],
-                                 used_product_substitution_rate[1])
+        self.product_growth_list = product_growth # [List] piecewise function
+        self.used_product_substitution_rate = np.random.triangular(
+            used_product_substitution_rate[0],
+            used_product_substitution_rate[2],
+            used_product_substitution_rate[1])
+        
         self.product_growth = self.product_growth_list[0]
-        self.failure_rate_alpha = \
-            np.random.triangular(failure_rate_alpha[0], 
-                                 failure_rate_alpha[2],
-                                 failure_rate_alpha[1])
+        self.failure_rate_alpha = np.random.triangular(
+            failure_rate_alpha[0], 
+            failure_rate_alpha[2],
+            failure_rate_alpha[1])
         
-        self.perceived_behavioral_control = perceived_behavioral_control
+        self.perceived_behavioral_control = perceived_behavioral_control # [List] costs of each EoL pathway
         self.copy_perceived_behavioral_control = \
             self.perceived_behavioral_control.copy()
             
@@ -161,6 +162,7 @@ class Consumers(Agent):
             model.color_map.append('blue')
         else:
             model.color_map.append('green')
+            
         # Get ID for recyclers and refurbisher
         self.recycling_facility_id = model.num_consumers + random.randrange(model.num_recyclers)
         self.refurbisher_id = model.num_consumers + model.num_prod_n_recyc + \
@@ -189,19 +191,19 @@ class Consumers(Agent):
                 a=(0 - att_distrib_param_eol[0]) / att_distrib_param_eol[1],
                 b=(1 - att_distrib_param_eol[0]) / att_distrib_param_eol[1],
                 loc=att_distrib_param_eol[0],
-                scale=att_distrib_param_eol[1])
+                scale=att_distrib_param_eol[1]) # [List] bounded normal distribution
         self.attitude_levels_pathways = [0] * len(self.model.all_EoL_pathways)
         
         self.attitude_level_reuse = \
             self.attitude_level_distribution(
-                (0 - att_distrib_param_reuse[0]) / att_distrib_param_reuse[1],
-                (1 - att_distrib_param_reuse[0]) / att_distrib_param_reuse[1],
-                att_distrib_param_reuse[0],
-                att_distrib_param_reuse[1])
+                a=(0 - att_distrib_param_reuse[0]) / att_distrib_param_reuse[1],
+                b=(1 - att_distrib_param_reuse[0]) / att_distrib_param_reuse[1],
+                loc=att_distrib_param_reuse[0],
+                scale=att_distrib_param_reuse[1])
             
-        self.purchase_choices = list(self.model.purchase_options.keys())
+        self.purchase_choices = list(self.model.purchase_options.keys()) # new, used
         self.attitude_levels_purchase = [0] * len(self.purchase_choices)
-        self.pbc_reuse = [self.model.fsthand_mkt_pric, np.nan, self.model.fsthand_mkt_pric]
+        self.pbc_reuse = [self.model.fsthand_mkt_pric, np.nan, self.model.fsthand_mkt_pric] # ($/fu)
         
         self.distances_to_customers = []
         self.distances_to_customers = self.model.shortest_paths(
@@ -239,13 +241,16 @@ class Consumers(Agent):
        
     def mass_per_function_model(self, product_as_function):
         """
+        # [E3]
         Convert end-of-life volume in Wp to kg. Account for the year the
         module was manufactured and the average weight-to-power ratio at that
         time. The model from IRENA-IEA 2016 is used.
         """
+        # product_average_wght (kg/fu), (default=0.1).
+        # mass_to_function_reg_coeff, (default=0.03).
         mass_conversion_coeffs = [
             self.model.product_average_wght * exp(-self.model.mass_to_function_reg_coeff * x) 
-            for x in range(len(product_as_function))]
+            for x in range(len(product_as_function))] 
         
         product_as_mass = [product_as_function[i] * mass_conversion_coeffs[i]
                             for i in range(len(product_as_function))]
@@ -256,6 +261,35 @@ class Consumers(Agent):
                 for i in range(len(mass_conversion_coeffs)) if mass_eol != 0])
         return mass_eol      
        
+    def attitude_level_distribution(self, a, b, loc, scale):
+        """
+        Distribute pro-environmental attitude level toward the decision in the
+        population.
+        """
+        distribution = truncnorm(a, b, loc, scale)
+        attitude_level = float(distribution.rvs(1))
+        return attitude_level       
+    
+    def agent_breed(self):
+        """
+        Distribute the agent type (residential, non-residential).
+        """
+        u_id = self.model.list_consumer_id[self.unique_id]
+        if u_id < round(self.model.num_consumers *
+                        self.consumers_distribution["commercial"]):
+            self.breed = "commercial"
+        elif u_id < \
+                round(self.model.num_consumers *
+                      (self.consumers_distribution["commercial"] +
+                       self.consumers_distribution["utility"])):
+            self.breed = "utility"
+        self.number_product = [x / self.consumers_distribution[self.breed] *
+                               self.product_distribution[self.breed] for x in
+                               self.number_product]
+        if not self.model.theory_of_planned_behavior[self.breed]:
+            self.w_sn_eol = 0
+            self.w_a_eol = 0       
+    
     def update_transport_costs(self):
         """
         Update transportation costs according to the (evolving) mass of waste.
@@ -266,15 +300,6 @@ class Consumers(Agent):
              self.model.product_average_wght) * \
             self.model.transportation_cost / 1E3 * \
             self.model.mean_distance_within_state
-
-    def attitude_level_distribution(self, a, b, loc, scale):
-        """
-        Distribute pro-environmental attitude level toward the decision in the
-        population.
-        """
-        distribution = truncnorm(a, b, loc, scale)
-        attitude_level = float(distribution.rvs(1))
-        return attitude_level
 
     def extended_tpb_convenience(self):
         """
@@ -310,26 +335,6 @@ class Consumers(Agent):
         knowledge_eol = [self.model.extended_tpb["w_knowledge"] * x for x in
                          knowledge_eol]
         return knowledge_eol
-
-    def agent_breed(self):
-        """
-        Distribute the agent type (residential, non-residential).
-        """
-        u_id = self.model.list_consumer_id[self.unique_id]
-        if u_id < round(self.model.num_consumers *
-                        self.consumers_distribution["commercial"]):
-            self.breed = "commercial"
-        elif u_id < \
-                round(self.model.num_consumers *
-                      (self.consumers_distribution["commercial"] +
-                       self.consumers_distribution["utility"])):
-            self.breed = "utility"
-        self.number_product = [x / self.consumers_distribution[self.breed] *
-                               self.product_distribution[self.breed] for x in
-                               self.number_product]
-        if not self.model.theory_of_planned_behavior[self.breed]:
-            self.w_sn_eol = 0
-            self.w_a_eol = 0
 
     def update_product_stock(self):
         """

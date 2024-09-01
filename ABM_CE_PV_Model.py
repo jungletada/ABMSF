@@ -8,10 +8,10 @@ Model - agent-based simulations of the circular economy (ABSiCE)
 """
 
 from mesa import Model
-from ABM_CE_PV_ConsumerAgents import Consumers
-from ABM_CE_PV_RecyclerAgents import Recyclers
-from ABM_CE_PV_RefurbisherAgents import Refurbishers
-from ABM_CE_PV_ProducerAgents import Producers
+from ABM_CE_ConsumerAgents import Consumers
+from ABM_CE_RecyclerAgents import Recyclers
+from ABM_CE_RefurbisherAgents import Refurbishers
+from ABM_CE_ProducerAgents import Producers
 from mesa.time import BaseScheduler
 from mesa.space import NetworkGrid
 from mesa.datacollection import DataCollector
@@ -741,9 +741,12 @@ class ABM_CE_PV(Model):
             shortest_paths = []
             for j in target_states:
                 shortest_paths.append(
-                    nx.shortest_path_length(self.states_graph, source=i,
-                                            target=j, weight='weight',
-                                            method='dijkstra'))
+                    nx.shortest_path_length(
+                        self.states_graph, 
+                        source=i,
+                        target=j, 
+                        weight='weight',
+                        method='dijkstra'))
             shortest_paths_closest_target = min(shortest_paths)
             if shortest_paths_closest_target == 0:
                 shortest_paths_closest_target = self.mean_distance_within_state
