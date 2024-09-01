@@ -13,7 +13,7 @@ import random
 from collections import OrderedDict
 from scipy.stats import truncnorm
 import operator
-from math import *
+import math
 
 
 class Consumers(Agent):
@@ -250,7 +250,7 @@ class Consumers(Agent):
         # product_average_wght (kg/fu), (default=0.1).
         # mass_to_function_reg_coeff, (default=0.03).
         mass_conversion_coeffs = [
-            self.model.product_average_wght * exp(-self.model.mass_to_function_reg_coeff * x) 
+            self.model.product_average_wght * math.e ** (-self.model.mass_to_function_reg_coeff * x) 
             for x in range(len(product_as_function))] 
         
         product_as_mass = [product_as_function[i] * mass_conversion_coeffs[i]
@@ -321,17 +321,6 @@ class Consumers(Agent):
         knowledge_eol = [self.model.extended_tpb["w_knowledge"] * x 
                          for x in knowledge_eol]
         return knowledge_eol
-    
-    def update_transport_costs(self):
-        """
-        Update transportation costs according to the (evolving) mass of waste.
-        """
-        self.landfill_cost = \
-            self.init_landfill_cost + \
-            (self.model.dynamic_product_average_wght -
-             self.model.product_average_wght) * \
-            self.model.transportation_cost / 1E3 * \
-            self.model.mean_distance_within_state
 
     def update_product_stock(self):
         """
@@ -361,31 +350,32 @@ class Consumers(Agent):
                 self.new_products[-1] = 0
                 self.new_products_hard_copy[-1] = 0
                 self.model.sold_repaired_waste -= product_substituted
-        
+                
+        # Generate waste, called by consumers and recyclers / refurbishers
         self.waste = self.model.waste_generation(
-            self.model.d_product_lifetimes, 
-            self.failure_rate_alpha,
-            self.new_products)
+            avg_lifetime=self.model.d_product_lifetimes, 
+            failure_rate=self.failure_rate_alpha,
+            num_product=self.new_products)
         
         self.used_waste = self.model.waste_generation(
-            [x * self.used_product_substitution_rate for x in
-             self.model.d_product_lifetimes],
-            self.model.avg_failure_rate[0], self.used_products)
+            avg_lifetime=[x * self.used_product_substitution_rate 
+                          for x in self.model.d_product_lifetimes],
+            failure_rate=self.model.avg_failure_rate[0], 
+            num_product=self.used_products)
         
         self.number_product_EoL = sum(self.waste)
         self.number_used_product_EoL = sum(self.used_waste)
         self.tot_prod_EoL = self.number_product_EoL + self.number_used_product_EoL
         
         self.new_products = [product - waste_new for product, waste_new in
-                             zip(self.new_products, self.waste)]
+                                zip(self.new_products, self.waste)]
         
         self.used_products = [product - waste_used for product, waste_used in
-                              zip(self.used_products, self.used_waste)]
+                                zip(self.used_products, self.used_waste)]
         
         self.number_product = [
-            product - waste_new - waste_used for
-            product, waste_new, waste_used in
-            zip(self.number_product, self.waste, self.used_waste)]
+            product - waste_new - waste_used for product, waste_new, waste_used in
+                zip(self.number_product, self.waste, self.used_waste)]
 
     def tpb_subjective_norm(self, decision, list_choices, weight_sn):
         """
@@ -405,8 +395,7 @@ class Consumers(Agent):
             proportions_choices.append(proportion_choice)
         return [weight_sn * x for x in proportions_choices]
 
-    def tpb_perceived_behavioral_control(self, decision, pbc_choice,
-                                         weight_pbc):
+    def tpb_perceived_behavioral_control(self, decision, pbc_choice, weight_pbc):
         """
         Calculate perceived behavioral control component of EoL TPB rule.
         Following Ghali et al. 2017 and Labelle et al. 2018, perceived
@@ -424,38 +413,31 @@ class Consumers(Agent):
                 pbc_choice = [i / max_cost for i in pbc_choice]
         return [weight_pbc * -1 * max(i, 0) for i in pbc_choice]
 
-    def tpb_attitude(self, decision, att_levels, att_level, weight_a):
+    def tpb_attitude(self, decision, att_levels_purchase, att_level_reuse, weight_a):
         """
         Calculate pro-environmental attitude component of EoL TPB rule. Options
         considered pro environmental get a higher score than other options.
         """
-        for i in range(len(att_levels)):
+        for i in range(len(att_levels_purchase)):
             if decision == "EoL_pathway":
                 if list(self.model.all_EoL_pathways.keys())[i] == "repair" or \
                         list(self.model.all_EoL_pathways.keys())[i] == "sell" \
                         or list(self.model.all_EoL_pathways.keys())[i] == \
                         "recycle":
-                    att_levels[i] = att_level
+                    att_levels_purchase[i] = att_level_reuse
                     # HERE modification for encouraging recycling
-                    # if list(self.model.all_EoL_pathways.keys())[i] ==
-                    # "recycle":
-                    # att_levels[i] = att_level * 1.0
+                    # if list(self.model.all_EoL_pathways.keys())[i] == "recycle":
+                    #   att_levels[i] = att_level * 1.0
                 else:
-                    att_levels[i] = 1 - att_level
+                    att_levels_purchase[i] = 1 - att_level_reuse
+                    
             elif decision == "purchase_choice":
-                if self.purchase_choices[i] == "used" or \
-                        self.purchase_choices[i] == "certified":
-                    att_levels[i] = att_level
+                if self.purchase_choices[i] == "used" or self.purchase_choices[i] == "certified":
+                    att_levels_purchase[i] = att_level_reuse
                 else:
-                    att_levels[i] = 1 - att_level
-        return [weight_a * x for x in att_levels]
-
-    def yearly_prod_n_waste(self):
-        """
-        Update total waste generated an yearly production.
-        """
-        self.model.total_waste += self.tot_prod_EoL
-        self.model.total_yearly_new_products += self.new_products[-1]
+                    att_levels_purchase[i] = 1 - att_level_reuse
+                    
+        return [weight_a * x for x in att_levels_purchase]
 
     def repairable_modules(self, pbc_choice):
         """
@@ -478,32 +460,46 @@ class Consumers(Agent):
             pbc_choice[0] = 1
             pbc_choice[1] = 1
 
-    def tpb_decision(self, decision, list_choices, avl_paths, weight_sn,
-                     pbc_choice, weight_pbc, att_levels, att_level, weight_a):
+    def tpb_decision(self, decision, list_choices, EoL_pathways, 
+                     weight_sn, pbc_choice, weight_pbc, 
+                     att_levels_purchase, att_level_reuse, weight_a):
         """
         Select the decision with highest behavioral intention following the
-        Theory of Planned Bahevior (TPB). Behavioral intention is a function
+        Theory of `Planned Bahevior` (TPB). `Behavioral intention` is a function
         of the subjective norm, the perceived behavioral control and attitude.
         """
+        # Subjective norm (peer pressure)
         sn_values = self.tpb_subjective_norm(
             decision, list_choices, weight_sn)
+        # Perceived behavioral control
         pbc_values = self.tpb_perceived_behavioral_control(
             decision, pbc_choice, weight_pbc)
-        a_values = self.tpb_attitude(decision, att_levels, att_level, weight_a)
-        self.behavioral_intentions = [(pbc_values[i]) + sn_values[i] +
-                                      a_values[i] for i in
-                                      range(len(pbc_values))]
-        self.pathways_and_BI = {list_choices[i]: self.behavioral_intentions[i]
-                                for i in
-                                range(len(list_choices))}
+        # Pro-environmental attitude
+        a_values = self.tpb_attitude(
+            decision=decision, 
+            att_levels_purchase=att_levels_purchase, 
+            att_level_reuse=att_level_reuse, 
+            weight_a=weight_a)
+        
+        self.behavioral_intentions = [
+            (pbc_values[i]) + sn_values[i] + a_values[i] 
+                for i in range(len(pbc_values))]
+        
+        self.pathways_and_BI = {
+            list_choices[i]: self.behavioral_intentions[i]
+                for i in range(len(list_choices))}
+        
         shuffled_dic = list(self.pathways_and_BI.items())
         random.shuffle(shuffled_dic)
         self.pathways_and_BI = OrderedDict(shuffled_dic)
+        
         for key, value in self.pathways_and_BI.items():
             if value == np.nan:
                 return self.EoL_pathway
+            
         conditions = False
         removed_choice = None
+        
         while not conditions:
             if removed_choice is not None:
                 self.pathways_and_BI.pop(removed_choice)
@@ -517,7 +513,7 @@ class Consumers(Agent):
             else:
                 key = max(self.pathways_and_BI.items(),
                           key=operator.itemgetter(1))[0]
-                if avl_paths.get(key) and key != "sell":
+                if EoL_pathways.get(key) and key != "sell":
                     return key
                 else:
                     new_installed_capacity = 0
@@ -526,86 +522,11 @@ class Consumers(Agent):
                             new_installed_capacity += agent.number_product[-1]
                     used_volume_purchased = self.model.consumer_used_product \
                         / self.model.num_consumers * new_installed_capacity
-                if avl_paths.get(key) and key == "sell" and \
+                if EoL_pathways.get(key) and key == "sell" and \
                         self.sold_waste < used_volume_purchased:
                     return key
                 else:
                     removed_choice = key
-
-    def volume_used_products_purchased(self):
-        """
-        Count amount of remanufactured product that are bought by consumers
-        """
-        self.purchase_choice = \
-            self.tpb_decision(
-                "purchase_choice", list(self.model.purchase_options.keys()),
-                self.model.all_EoL_pathways, self.w_sn_reuse, self.pbc_reuse,
-                self.w_pbc_reuse, self.attitude_levels_purchase,
-                self.attitude_level_reuse, self.w_a_reuse)
-        if self.model.seeding["Seeding"] and self.model.clock >= \
-                self.model.seeding["Year"]:
-            for consumer in range(self.model.seeding["number_seed"]):
-                if self.unique_id == \
-                        self.model.list_consumer_id_seed[consumer]:
-                    second_hand_p = 0
-                    repair_c = 0
-                    for agent in self.model.schedule.agents:
-                        if agent.unique_id == self.refurbisher_id:
-                            second_hand_p = agent.scd_hand_price
-                            repair_c = agent.repairing_cost
-                    self.purchase_choice = "used"
-                    self.model.cost_seeding += second_hand_p + repair_c + \
-                        self.random_interstate_distance * \
-                        self.model.transportation_cost / 1E3 * \
-                        self.model.dynamic_product_average_wght
-        if self.purchase_choice == "new":
-            self.number_product_new += self.number_product[-1]
-        elif self.EoL_pathway == "used":
-            self.number_product_used += self.number_product[-1]
-        else:
-            self.number_product_certified += self.number_product[-1]
-
-    def update_product_eol(self, product_type):
-        """
-        The amount of waste generated is taken from "update_product_stock"
-        and attributed to the chosen EoL pathway
-        """
-        limited_paths = self.model.all_EoL_pathways.copy()
-        if self.model.seeding_recyc["Seeding"] and self.model.clock >= \
-                self.model.seeding_recyc["Year"]:
-            for consumer in range(self.model.seeding_recyc["number_seed"]):
-                if self.unique_id == \
-                        self.model.list_consumer_id_seed[consumer]:
-                    self.perceived_behavioral_control[2] *= \
-                        self.model.seeding_recyc["discount"]
-        if product_type == "new":
-            self.storage_management(limited_paths)
-            self.EoL_pathway = \
-                self.tpb_decision(
-                    "EoL_pathway", list(self.model.all_EoL_pathways.keys()),
-                    limited_paths, self.w_sn_eol,
-                    self.perceived_behavioral_control, self.w_pbc_eol,
-                    self.attitude_levels_pathways, self.attitude_level,
-                    self.w_a_eol)
-            # HERE: self.number_product_EoL + self.product_storage_to_other
-            self.update_eol_volumes(self.EoL_pathway, self.number_product_EoL +
-                                    self.product_storage_to_other,
-                                    product_type, self.product_storage_to_other)
-        else:
-            limited_paths["repair"] = False
-            limited_paths["sell"] = False
-            limited_paths["hoard"] = False
-            self.used_EoL_pathway = \
-                self.tpb_decision(
-                    "EoL_pathway", list(self.model.all_EoL_pathways.keys()),
-                    limited_paths, self.w_sn_eol,
-                    self.perceived_behavioral_control, self.w_pbc_eol,
-                    self.attitude_levels_pathways, self.attitude_level,
-                    self.w_a_eol)
-            self.update_eol_volumes(self.used_EoL_pathway,
-                                    self.number_used_product_EoL,
-                                    product_type,
-                                    self.product_storage_to_other)
 
     def update_eol_volumes(self, eol_pathway, managed_waste, product_type,
                            storage):
@@ -704,26 +625,6 @@ class Consumers(Agent):
             self.number_new_prod_hoarded = 0
             limited_paths["hoard"] = False
 
-    def update_perceived_behavioral_control(self):
-        """
-        Costs from each EoL pathway and purchase choice and related perceived
-        behavioral control are updated according to processes from other agents
-        or own initiated costs.
-        """
-        for agent in self.model.schedule.agents:
-            if agent.unique_id == self.recycling_facility_id:
-                self.perceived_behavioral_control[2] = \
-                    agent.recycling_cost
-            elif agent.unique_id == self.refurbisher_id:
-                self.perceived_behavioral_control[0] = \
-                    agent.repairing_cost
-                self.perceived_behavioral_control[1] = -1 * \
-                    agent.scd_hand_price * (1 - agent.refurbisher_margin)
-                self.pbc_reuse[1] = agent.scd_hand_price
-        self.pbc_reuse[0] = self.model.fsthand_mkt_pric
-        self.perceived_behavioral_control[3] = self.landfill_cost
-        self.perceived_behavioral_control[4] = self.hoarding_cost
-
     def product_mass_output_metrics(self):
         """
         Account for new and used products' volumes in mass unit.
@@ -739,27 +640,152 @@ class Consumers(Agent):
         self.used_products_mass += \
             self.mass_per_function_model(last_capacity_used)
 
+    def update_transport_costs(self):
+        """
+        Update transportation costs according to the (evolving) mass of waste.
+        """
+        self.landfill_cost = self.init_landfill_cost + \
+            (self.model.dynamic_product_average_wght - self.model.product_average_wght) * \
+            self.model.transportation_cost / 1E3 * self.model.mean_distance_within_state
+         
+    def yearly_production_waste(self):
+        """
+        Update total waste generated an yearly production.
+        """
+        self.model.total_waste += self.tot_prod_EoL
+        self.model.total_yearly_new_products += self.new_products[-1]
+
+    def update_perceived_behavioral_control(self):
+        """
+        Costs from each EoL pathway and purchase choice and related perceived
+        behavioral control are updated according to processes from other agents
+        or own initiated costs.
+        """
+        for agent in self.model.schedule.agents:
+            if agent.unique_id == self.recycling_facility_id:
+                self.perceived_behavioral_control[2] = agent.recycling_cost
+            
+            elif agent.unique_id == self.refurbisher_id:
+                self.perceived_behavioral_control[0] = agent.repairing_cost
+                self.perceived_behavioral_control[1] = -1 * agent.scd_hand_price * (1 - agent.refurbisher_margin)
+                self.pbc_reuse[1] = agent.scd_hand_price
+                
+        self.pbc_reuse[0] = self.model.fsthand_mkt_pric
+        self.perceived_behavioral_control[3] = self.landfill_cost
+        self.perceived_behavioral_control[4] = self.hoarding_cost
+ 
+    def count_purchased_used_products(self):
+        """
+        Count amount of used product that are bought by consumers
+        """
+        self.purchase_choice = \
+            self.tpb_decision(
+                decision="purchase_choice", 
+                list_choices=list(self.model.purchase_options.keys()),
+                EoL_pathways=self.model.all_EoL_pathways, 
+                weight_sn=self.w_sn_reuse, 
+                pbc_choice=self.pbc_reuse,
+                weight_pbc=self.w_pbc_reuse, 
+                att_levels_purchase=self.attitude_levels_purchase,
+                att_level_reuse=self.attitude_level_reuse, 
+                weight_a=self.w_a_reuse)
+            
+        if self.model.seeding["Seeding"] and self.model.clock >= self.model.seeding["Year"]:
+            for consumer in range(self.model.seeding["number_seed"]):
+                if self.unique_id == self.model.list_consumer_id_seed[consumer]:
+                    second_hand_p = 0
+                    repair_c = 0
+                    for agent in self.model.schedule.agents:
+                        if agent.unique_id == self.refurbisher_id:
+                            second_hand_p = agent.scd_hand_price
+                            repair_c = agent.repairing_cost
+                    self.purchase_choice = "used"
+                    self.model.cost_seeding += second_hand_p + repair_c + \
+                        self.random_interstate_distance * self.model.transportation_cost / 1E3 * \
+                        self.model.dynamic_product_average_wght
+                        
+        if self.purchase_choice == "new":
+            self.number_product_new += self.number_product[-1]
+        elif self.EoL_pathway == "used":
+            self.number_product_used += self.number_product[-1]
+        else:
+            self.number_product_certified += self.number_product[-1]
+
+    def update_product_eol(self, product_type):
+        """
+        The amount of waste generated is taken from "update_product_stock"
+        and attributed to the chosen EoL pathway
+        """
+        limited_paths = self.model.all_EoL_pathways.copy()
+        if self.model.seeding_recyc["Seeding"] and self.model.clock >= self.model.seeding_recyc["Year"]:
+            for consumer in range(self.model.seeding_recyc["number_seed"]):
+                if self.unique_id == self.model.list_consumer_id_seed[consumer]:
+                    self.perceived_behavioral_control[2] *= self.model.seeding_recyc["discount"]
+                        
+        if product_type == "new": # new product
+            self.storage_management(limited_paths)
+            self.EoL_pathway = self.tpb_decision(
+                "EoL_pathway", 
+                list(self.model.all_EoL_pathways.keys()),
+                limited_paths, 
+                self.w_sn_eol,
+                self.perceived_behavioral_control, 
+                self.w_pbc_eol,
+                self.attitude_levels_pathways, 
+                self.attitude_level,
+                self.w_a_eol)
+            # HERE: self.number_product_EoL + self.product_storage_to_other
+            self.update_eol_volumes(
+                self.EoL_pathway, 
+                self.number_product_EoL + self.product_storage_to_other,
+                product_type, 
+                self.product_storage_to_other)
+            
+        else:   # used product
+            limited_paths["repair"] = False
+            limited_paths["sell"] = False
+            limited_paths["hoard"] = False
+            
+            self.used_EoL_pathway = self.tpb_decision(
+                    "EoL_pathway", 
+                    list(self.model.all_EoL_pathways.keys()),
+                    limited_paths, 
+                    self.w_sn_eol,
+                    self.perceived_behavioral_control, 
+                    self.w_pbc_eol,
+                    self.attitude_levels_pathways, 
+                    self.attitude_level,
+                    self.w_a_eol)
+            
+            self.update_eol_volumes(
+                self.used_EoL_pathway,
+                self.number_used_product_EoL,
+                product_type,
+                self.product_storage_to_other)
+
     def step(self):
         """
         Evolution of agent at each step
         """
-        
-        self.product_mass_output_metrics()
+        # Account for new and used products' volumes in mass unit.
+        self.product_mass_output_metrics() 
+        # Initiate product storage to other
         self.product_storage_to_other = 0
         self.product_storage_to_other_ref = 0
+        # Update landfill transportation costs according to evolving mass of waste
         self.update_transport_costs()
-        
         # Update product growth from a list:
         if self.model.clock > self.model.growth_threshold:
             self.product_growth = self.product_growth_list[1]
-        
-        self.update_product_stock()
-        self.yearly_prod_n_waste()
+        # Update stock according to product growth and product failure
+        self.update_product_stock() 
+        # Update total waste generated an yearly production.
+        self.yearly_production_waste() 
+        # Updated PBC according to processes from other agentsor or own initiated costs.
         self.update_perceived_behavioral_control()
-        self.copy_perceived_behavioral_control = \
-            self.perceived_behavioral_control.copy()
-        
-        self.volume_used_products_purchased()
+        self.copy_perceived_behavioral_control = self.perceived_behavioral_control.copy()
+        # Count amount of remanufactured product that are bought by consumers
+        self.count_purchased_used_products()
         self.update_product_eol("new")
         self.product_storage_to_other_ref = self.product_storage_to_other
         self.update_product_eol("used")

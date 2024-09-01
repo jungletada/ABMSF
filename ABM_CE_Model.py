@@ -17,10 +17,11 @@ from mesa.space import NetworkGrid
 from mesa.datacollection import DataCollector
 import networkx as nx
 import numpy as np
-from math import *
+# from math import *
 import matplotlib.pyplot as plt
 import pandas as pd
 import random
+import math
 
 
 class ABM_CE_PV(Model):
@@ -362,7 +363,7 @@ class ABM_CE_PV(Model):
         
         self.num_recyclers = num_recyclers # 回收商
         self.num_producers = num_producers # 制造商
-        self.num_prod_n_recyc = num_recyclers + num_producers # learning effect
+        self.num_prod_n_recyc = num_recyclers + num_producers # 回收商+制造商
         self.num_refurbishers = num_refurbishers # 二手商
         
         self.prod_n_recyc_node_degree = prod_n_recyc_node_degree
@@ -611,86 +612,64 @@ class ABM_CE_PV(Model):
         # plt.show()
 
         # Defines reporters and set up data collector
-        ABM_CE_PV_model_reporters = {
-            "Year": lambda c:
-            self.report_output("year"),
-            "Average weight of waste": lambda c:
-            self.report_output("weight"),
-            "Agents repairing": lambda c: self.count_EoL("repairing"),
-            "Agents selling": lambda c: self.count_EoL("selling"),
-            "Agents recycling": lambda c: self.count_EoL("recycling"),
-            "Agents landfilling": lambda c: self.count_EoL("landfilling"),
-            "Agents storing": lambda c: self.count_EoL("hoarding"),
-            "Agents buying new": lambda c: self.count_EoL("buy_new"),
-            "Agents buying used": lambda c: self.count_EoL("buy_used"),
-            "Agents buying certified": lambda c: self.count_EoL("certified"),
-            "Total product": lambda c:
-            self.report_output("product_stock"),
-            "New product": lambda c:
-            self.report_output("product_stock_new"),
-            "Used product": lambda c:
-            self.report_output("product_stock_used"),
-            "New product_mass": lambda c:
-            self.report_output("prod_stock_new_mass"),
-            "Used product_mass": lambda c:
-            self.report_output("prod_stock_used_mass"),
-            "End-of-life - repaired": lambda c:
-            self.report_output("product_repaired"),
-            "End-of-life - sold": lambda c: self.report_output("product_sold"),
-            "End-of-life - recycled": lambda c:
-            self.report_output("product_recycled"),
-            "End-of-life - landfilled": lambda c:
-            self.report_output("product_landfilled"),
-            "End-of-life - stored": lambda c:
-            self.report_output("product_hoarded"),
-            "eol - new repaired weight": lambda c:
-            self.report_output("product_new_repaired"),
-            "eol - new sold weight": lambda c:
-            self.report_output("product_new_sold"),
-            "eol - new recycled weight": lambda c:
-            self.report_output("product_new_recycled"),
-            "eol - new landfilled weight": lambda c:
-            self.report_output("product_new_landfilled"),
-            "eol - new stored weight": lambda c:
-            self.report_output("product_new_hoarded"),
-            "eol - used repaired weight": lambda c:
-            self.report_output("product_used_repaired"),
-            "eol - used sold weight": lambda c:
-            self.report_output("product_used_sold"),
-            "eol - used recycled weight": lambda c:
-            self.report_output("product_used_recycled"),
-            "eol - used landfilled weight": lambda c:
-            self.report_output("product_used_landfilled"),
-            "eol - used stored weight": lambda c:
-            self.report_output("product_used_hoarded"),
-            "Average landfilling cost": lambda c:
-            self.report_output("average_landfill_cost"),
-            "Average storing cost": lambda c:
-            self.report_output("average_hoarding_cost"),
-            "Average recycling cost": lambda c:
-            self.report_output("average_recycling_cost"),
-            "Average repairing cost": lambda c:
-            self.report_output("average_repairing_cost"),
-            "Average selling cost": lambda c:
-            self.report_output("average_second_hand_price"),
-            "Recycled material volume": lambda c:
-            self.report_output("recycled_mat_volume"),
-            "Recycled material value": lambda c:
-            self.report_output("recycled_mat_value"),
-            "Producer costs": lambda c:
-            self.report_output("producer_costs"),
-            "Consumer costs": lambda c:
-            self.report_output("consumer_costs"),
-            "Recycler costs": lambda c:
-            self.report_output("recycler_costs"),
-            "Refurbisher costs": lambda c:
-            self.report_output("refurbisher_costs"),
-            "Refurbisher costs w margins": lambda c:
-            self.report_output("refurbisher_costs_w_margins")}
+        ABM_CE_model_reporters = {
+            "Year": 
+                lambda c: self.report_output("year"),
+            "Average weight of waste": 
+                lambda c: self.report_output("weight"),
+            "Agents repairing": 
+                lambda c: self.count_EoL("repairing"),
+            "Agents selling": 
+                lambda c: self.count_EoL("selling"),
+            "Agents recycling": 
+                lambda c: self.count_EoL("recycling"),
+            "Agents landfilling": 
+                lambda c: self.count_EoL("landfilling"),
+            "Agents storing": 
+                lambda c: self.count_EoL("hoarding"),
+            "Agents buying new": 
+                lambda c: self.count_EoL("buy_new"),
+            "Agents buying used": 
+                lambda c: self.count_EoL("buy_used"),
+            "Agents buying certified": 
+                lambda c: self.count_EoL("certified"),
+            "Total product": 
+                lambda c:self.report_output("product_stock"),
+            "New product": lambda c:self.report_output("product_stock_new"),
+            "Used product": lambda c:self.report_output("product_stock_used"),
+            "New product_mass": lambda c:self.report_output("prod_stock_new_mass"),
+            "Used product_mass": lambda c:self.report_output("prod_stock_used_mass"),
+            "EoL-repaired": lambda c:self.report_output("product_repaired"),
+            "EoL-sold": lambda c: self.report_output("product_sold"),
+            "EoL-recycled": lambda c:self.report_output("product_recycled"),
+            "EoL-landfilled": lambda c:self.report_output("product_landfilled"),
+            "EoL-stored": lambda c:self.report_output("product_hoarded"),
+            "EoL-new repaired weight": lambda c:self.report_output("product_new_repaired"),
+            "EoL-new sold weight": lambda c:self.report_output("product_new_sold"),
+            "EoL-new recycled weight": lambda c:self.report_output("product_new_recycled"),
+            "EoL-new landfilled weight": lambda c:self.report_output("product_new_landfilled"),
+            "EoL-new stored weight": lambda c:self.report_output("product_new_hoarded"),
+            "EoL-used repaired weight": lambda c:self.report_output("product_used_repaired"),
+            "EoL-used sold weight": lambda c:self.report_output("product_used_sold"),
+            "EoL-used recycled weight": lambda c:self.report_output("product_used_recycled"),
+            "EoL-used landfilled weight": lambda c:self.report_output("product_used_landfilled"),
+            "EoL-used stored weight": lambda c:self.report_output("product_used_hoarded"),
+            "Average landfilling cost": lambda c:self.report_output("average_landfill_cost"),
+            "Average storing cost": lambda c:self.report_output("average_hoarding_cost"),
+            "Average recycling cost": lambda c:self.report_output("average_recycling_cost"),
+            "Average repairing cost": lambda c:self.report_output("average_repairing_cost"),
+            "Average selling cost": lambda c:self.report_output("average_second_hand_price"),
+            "Recycled material volume": lambda c:self.report_output("recycled_mat_volume"),
+            "Recycled material value": lambda c:self.report_output("recycled_mat_value"),
+            "Producer costs": lambda c:self.report_output("producer_costs"),
+            "Consumer costs": lambda c:self.report_output("consumer_costs"),
+            "Recycler costs": lambda c:self.report_output("recycler_costs"),
+            "Refurbisher costs": lambda c:self.report_output("refurbisher_costs"),
+            "Refurbisher costs w margins": lambda c:self.report_output("refurbisher_costs_w_margins")}
 
-        ABM_CE_PV_agent_reporters = {
-            "Year": lambda c:
-            self.report_output("year"),
+        ABM_CE_agent_reporters = {
+            "Year": 
+                lambda c: self.report_output("year"),
             "Number_product_repaired":
                 lambda a: getattr(a, "number_product_repaired", None),
             "Number_product_sold":
@@ -729,8 +708,8 @@ class ABM_CE_PV(Model):
                 lambda a: getattr(a, "refurbisher_costs", None)}
 
         self.datacollector = DataCollector(
-            model_reporters=ABM_CE_PV_model_reporters,
-            agent_reporters=ABM_CE_PV_agent_reporters)
+            model_reporters=ABM_CE_model_reporters,
+            agent_reporters=ABM_CE_agent_reporters)
 
     def shortest_paths(self, target_states, distances_to_target):
         """
@@ -756,7 +735,7 @@ class ABM_CE_PV(Model):
     def init_network(self, network, nodes, node_degree, rewiring_prob):
         """
         Set up model's industrial symbiosis (IS) and consumers networks.
-        建立工业共生模式（IS）和消费者网络。
+        建立工业共生模式IS和消费者网络。
         """
         if network == "small-world":
             return nx.watts_strogatz_graph(nodes, node_degree, rewiring_prob, seed=random.seed(self.seed))
@@ -798,7 +777,7 @@ class ABM_CE_PV(Model):
         (to get original recycling/repairing amounts).
         """
         correction_year = len(self.total_number_product) - 1
-        return [j * (1 - e**(-(((self.clock + (correction_year - z)) /
+        return [j * (1 - math.e ** (-(((self.clock + (correction_year - z)) /
                                avg_lifetime[z])**failure_rate))).real
                 for (z, j) in enumerate(num_product)]
 
@@ -843,9 +822,8 @@ class ABM_CE_PV(Model):
         additional_capacity = sum(product_as_function) * product_growth_rate
         product_as_function.append(additional_capacity)
         mass_conversion_coeffs = [
-            self.product_average_wght * e**(
-                -self.mass_to_function_reg_coeff * x) for x in
-            range(len(product_as_function))]
+            self.product_average_wght * math.e ** (-self.mass_to_function_reg_coeff * x) 
+                for x in range(len(product_as_function))]
         self.yearly_product_wght = mass_conversion_coeffs[-1]
         weighted_average_mass_watt = sum(
             [product_as_function[i] / sum(product_as_function) *
@@ -859,9 +837,8 @@ class ABM_CE_PV(Model):
         modules of the same year.
         """
         correction_year = len(self.total_number_product)
-        self.fsthand_mkt_pric = self.fsthand_mkt_pric_reg_param[0] * e**(
-                -self.fsthand_mkt_pric_reg_param[1] * (self.clock +
-                                                       correction_year))
+        self.fsthand_mkt_pric = self.fsthand_mkt_pric_reg_param[0] * math.e **(
+                -self.fsthand_mkt_pric_reg_param[1] * (self.clock + correction_year))
 
     def count_EoL(model, condition):
         """
@@ -1058,6 +1035,7 @@ class ABM_CE_PV(Model):
             self.average_mass_per_function_model(self.copy_total_number_product)
         # Collect data
         self.datacollector.collect(self)
+        
         # Refers to agent step function
         self.update_dynamic_lifetime()
         
