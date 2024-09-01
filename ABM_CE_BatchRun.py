@@ -7,7 +7,7 @@ Created on Wed Nov 21 12:43 2019
 Run - batch of simulations with final state of outputs
 """
 
-from ABM_CE_PV_Model import *
+from ABM_CE_Model import *
 from mesa.batchrunner import BatchRunner
 from mesa.batchrunner import BatchRunnerMP
 from SALib.sample import saltelli

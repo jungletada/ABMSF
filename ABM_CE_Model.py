@@ -1041,8 +1041,7 @@ class ABM_CE_PV(Model):
                     model.num_prod_n_recyc <= agent.unique_id:
                 count += agent.refurbisher_costs_w_margins
         if condition == "product_sold":
-            model.sold_repaired_waste += count2 - \
-                                         model.past_sold_repaired_waste
+            model.sold_repaired_waste += count2 - model.past_sold_repaired_waste
             model.past_sold_repaired_waste = count2
         return count
 
@@ -1056,8 +1055,7 @@ class ABM_CE_PV(Model):
         self.yearly_repaired_waste = 0
         
         self.dynamic_product_average_wght = \
-            self.average_mass_per_function_model(
-                self.copy_total_number_product)
+            self.average_mass_per_function_model(self.copy_total_number_product)
         # Collect data
         self.datacollector.collect(self)
         # Refers to agent step function

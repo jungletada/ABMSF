@@ -207,13 +207,12 @@ class Consumers(Agent):
         
         self.distances_to_customers = []
         self.distances_to_customers = self.model.shortest_paths(
-            [random.choice(self.model.all_states)],
-            self.distances_to_customers)
+            target_states=[random.choice(self.model.all_states)],
+            distances_to_target=self.distances_to_customers)
         
-        self.random_interstate_distance = random.choice(
-            self.distances_to_customers)
+        self.random_interstate_distance = random.choice(self.distances_to_customers)
         
-        self.agent_breed()
+        self.agent_breed() # Distribute the agent type (residential, non-residential).
         self.product_storage_to_other_ref = 0
         self.waste = []
         self.used_waste = []
@@ -222,7 +221,9 @@ class Consumers(Agent):
         self.past_recycled_waste = 0
         self.yearly_recycled_waste = 0
         self.sold_waste = 0
+        ## Compute the convenience factor of the theory of planned behavior as a function of the distance
         self.convenience = self.extended_tpb_convenience()
+        ## Distribute end-of-life management knowledge among agents.
         self.knowledge = self.extended_tpb_knowledge()
         #print("out func", self.knowledge)
 
@@ -275,20 +276,51 @@ class Consumers(Agent):
         Distribute the agent type (residential, non-residential).
         """
         u_id = self.model.list_consumer_id[self.unique_id]
-        if u_id < round(self.model.num_consumers *
-                        self.consumers_distribution["commercial"]):
+        if u_id < round(self.model.num_consumers * self.consumers_distribution["commercial"]):
             self.breed = "commercial"
-        elif u_id < \
-                round(self.model.num_consumers *
-                      (self.consumers_distribution["commercial"] +
-                       self.consumers_distribution["utility"])):
+        elif u_id < round(self.model.num_consumers *
+                    (self.consumers_distribution["commercial"] + self.consumers_distribution["utility"])):
             self.breed = "utility"
         self.number_product = [x / self.consumers_distribution[self.breed] *
-                               self.product_distribution[self.breed] for x in
-                               self.number_product]
+                               self.product_distribution[self.breed] 
+                               for x in self.number_product]
         if not self.model.theory_of_planned_behavior[self.breed]:
             self.w_sn_eol = 0
             self.w_a_eol = 0       
+    
+    def extended_tpb_convenience(self):
+        """
+        Compute the convenience factor of the theory of planned behavior as a
+        function of the distance necessary to perform the behavior.
+        All pathways are assumed to be within the states except for recycling
+        which is approximated to the distance to the nearest recycler
+        (and assumed to be independent from the recycling costs).
+        """
+        # A small constant is added to avoid np.random.triangular error
+        recyc_dist = np.random.triangular(
+            self.model.mn_mx_av_distance_to_recycler[0],
+            self.model.mn_mx_av_distance_to_recycler[2],
+            self.model.mn_mx_av_distance_to_recycler[1] + 0.001)
+        convenience = [0, 0, 
+                       (recyc_dist - self.model.mn_mx_av_distance_to_recycler[0]) 
+                            / self.model.mn_mx_av_distance_to_recycler[1], 
+                       0, 0]
+        convenience = [self.model.extended_tpb["w_convenience"] * x 
+                       for x in convenience]
+        return convenience
+    
+    def extended_tpb_knowledge(self):
+        """
+        Distribute end-of-life management knowledge among agents.
+        """
+        loc = self.model.extended_tpb["knowledge_distrib"][0]
+        scale = self.model.extended_tpb["knowledge_distrib"][1]
+        distribution = truncnorm((0 - loc) / scale, (1 - loc) / scale, loc, scale)
+        knowledge_level = float(distribution.rvs(1))
+        knowledge_eol = [knowledge_level, knowledge_level, knowledge_level, 0, 0]
+        knowledge_eol = [self.model.extended_tpb["w_knowledge"] * x 
+                         for x in knowledge_eol]
+        return knowledge_eol
     
     def update_transport_costs(self):
         """
@@ -301,60 +333,26 @@ class Consumers(Agent):
             self.model.transportation_cost / 1E3 * \
             self.model.mean_distance_within_state
 
-    def extended_tpb_convenience(self):
-        """
-        Compute the convenience factor of the theory of planned behavior as a
-        function of the distance necessary to perform the behavior.
-        All pathways are assumed to be within the states  except for recycling
-        which is approximated to the distance to the nearest recycler
-        (and assumed to be independent from the recycling costs).
-        """
-        # A small constant is added to avoid np.random.triangular error
-        recyc_dist = np.random.triangular(
-            self.model.mn_mx_av_distance_to_recycler[0],
-            self.model.mn_mx_av_distance_to_recycler[2],
-            self.model.mn_mx_av_distance_to_recycler[1] + 0.001)
-        convenience = [0, 0, (recyc_dist -
-                              self.model.mn_mx_av_distance_to_recycler[0]) /
-                       self.model.mn_mx_av_distance_to_recycler[1], 0, 0]
-        convenience = [self.model.extended_tpb["w_convenience"] * x for x in
-                       convenience]
-        return convenience
-
-    def extended_tpb_knowledge(self):
-        """
-        Distribute end-of-life management knowledge among agents.
-        """
-        loc = self.model.extended_tpb["knowledge_distrib"][0]
-        scale = self.model.extended_tpb["knowledge_distrib"][1]
-        distribution = truncnorm((0 - loc) / scale, (1 - loc) / scale,
-                                 loc, scale)
-        knowledge_level = float(distribution.rvs(1))
-        knowledge_eol = [knowledge_level, knowledge_level, knowledge_level,
-                         0, 0]
-        knowledge_eol = [self.model.extended_tpb["w_knowledge"] * x for x in
-                         knowledge_eol]
-        return knowledge_eol
-
     def update_product_stock(self):
         """
         Update stock according to product growth and product failure
         Product failure is modeled with the Weibull function
         """
-        additional_capacity = sum(self.number_product_hard_copy) * \
-            self.product_growth
+        additional_capacity = sum(self.number_product_hard_copy) * self.product_growth
         self.number_product_hard_copy.append(additional_capacity)
         self.number_product.append(self.number_product_hard_copy[-1])
         self.new_products.append(self.number_product[-1])
         self.used_products.append(0)
         self.new_products_hard_copy.append(self.number_product[-1])
         self.used_products_hard_copy.append(0)
+        
         if self.purchase_choice == "used":
-            product_substituted = (1 - self.model.imperfect_substitution) * \
-                                  self.model.sold_repaired_waste / \
-                                  self.model.consumer_used_product
+            product_substituted = \
+                (1 - self.model.imperfect_substitution) * \
+                    self.model.sold_repaired_waste / self.model.consumer_used_product
             self.used_products[-1] = product_substituted
             self.used_products_hard_copy[-1] = product_substituted
+            
             if self.new_products[-1] > product_substituted:
                 self.new_products[-1] -= product_substituted
                 self.new_products_hard_copy[-1] -= product_substituted
@@ -363,21 +361,27 @@ class Consumers(Agent):
                 self.new_products[-1] = 0
                 self.new_products_hard_copy[-1] = 0
                 self.model.sold_repaired_waste -= product_substituted
+        
         self.waste = self.model.waste_generation(
-            self.model.d_product_lifetimes, self.failure_rate_alpha,
+            self.model.d_product_lifetimes, 
+            self.failure_rate_alpha,
             self.new_products)
+        
         self.used_waste = self.model.waste_generation(
             [x * self.used_product_substitution_rate for x in
              self.model.d_product_lifetimes],
             self.model.avg_failure_rate[0], self.used_products)
+        
         self.number_product_EoL = sum(self.waste)
         self.number_used_product_EoL = sum(self.used_waste)
-        self.tot_prod_EoL = self.number_product_EoL + \
-            self.number_used_product_EoL
+        self.tot_prod_EoL = self.number_product_EoL + self.number_used_product_EoL
+        
         self.new_products = [product - waste_new for product, waste_new in
                              zip(self.new_products, self.waste)]
+        
         self.used_products = [product - waste_used for product, waste_used in
                               zip(self.used_products, self.used_waste)]
+        
         self.number_product = [
             product - waste_new - waste_used for
             product, waste_new, waste_used in

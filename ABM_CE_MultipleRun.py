@@ -7,7 +7,7 @@ Created on Wed Nov 21 12:43 2019
 Run - one or several simulations with all states of outputs
 """
 
-from ABM_CE_PV_Model import *
+from ABM_CE_Model import *
 import matplotlib.pyplot as plt
 import time
 
