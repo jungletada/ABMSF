@@ -613,28 +613,17 @@ class ABM_CE_PV(Model):
 
         # Defines reporters and set up data collector
         ABM_CE_model_reporters = {
-            "Year": 
-                lambda c: self.report_output("year"),
-            "Average weight of waste": 
-                lambda c: self.report_output("weight"),
-            "Agents repairing": 
-                lambda c: self.count_EoL("repairing"),
-            "Agents selling": 
-                lambda c: self.count_EoL("selling"),
-            "Agents recycling": 
-                lambda c: self.count_EoL("recycling"),
-            "Agents landfilling": 
-                lambda c: self.count_EoL("landfilling"),
-            "Agents storing": 
-                lambda c: self.count_EoL("hoarding"),
-            "Agents buying new": 
-                lambda c: self.count_EoL("buy_new"),
-            "Agents buying used": 
-                lambda c: self.count_EoL("buy_used"),
-            "Agents buying certified": 
-                lambda c: self.count_EoL("certified"),
-            "Total product": 
-                lambda c:self.report_output("product_stock"),
+            "Year": lambda c: self.report_output("year"),
+            "Average weight of waste": lambda c: self.report_output("weight"),
+            "Agents repairing": lambda c: self.count_EoL("repairing"),
+            "Agents selling": lambda c: self.count_EoL("selling"),
+            "Agents recycling": lambda c: self.count_EoL("recycling"),
+            "Agents landfilling": lambda c: self.count_EoL("landfilling"),
+            "Agents storing": lambda c: self.count_EoL("hoarding"),
+            "Agents buying new": lambda c: self.count_EoL("buy_new"),
+            "Agents buying used": lambda c: self.count_EoL("buy_used"),
+            "Agents buying certified": lambda c: self.count_EoL("certified"),
+            "Total product": lambda c:self.report_output("product_stock"),
             "New product": lambda c:self.report_output("product_stock_new"),
             "Used product": lambda c:self.report_output("product_stock_used"),
             "New product_mass": lambda c:self.report_output("prod_stock_new_mass"),
