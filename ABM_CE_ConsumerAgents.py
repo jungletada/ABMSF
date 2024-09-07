@@ -25,8 +25,8 @@ class Consumers(Agent):
     Attributes:
         unique_id: agent #, also relate to the node # in the network
         model (see ABM_CE_PV_Model)
-        product_growth (a list for a piecewise function) (ratio), (default=
-            [0.166, 0.045]). From IRENA-IEA 2016
+        product_growth (a list for a piecewise function, μ and τ: growth rate of periods) (ratio),
+        (default=[0.166, 0.045]). From IRENA-IEA 2016
         failure_rate_alpha (a list for a triangular distribution), (default=
             [2.4928, 5.3759, 3.93495]). From IRENA-IEA 2016.
         perceived_behavioral_control (a list containing costs of each end of
@@ -148,8 +148,7 @@ class Consumers(Agent):
             failure_rate_alpha[1])
         
         self.perceived_behavioral_control = perceived_behavioral_control # [List] costs of each EoL pathway
-        self.copy_perceived_behavioral_control = \
-            self.perceived_behavioral_control.copy()
+        self.copy_perceived_behavioral_control = self.perceived_behavioral_control.copy()
             
         self.w_sn_eol = w_sn_eol
         self.w_pbc_eol = w_pbc_eol
@@ -187,7 +186,7 @@ class Consumers(Agent):
         # HERE
 
         self.attitude_level = \
-            self.attitude_level_distribution(
+            self.distribute_attitude_level(
                 a=(0 - att_distrib_param_eol[0]) / att_distrib_param_eol[1],
                 b=(1 - att_distrib_param_eol[0]) / att_distrib_param_eol[1],
                 loc=att_distrib_param_eol[0],
@@ -195,7 +194,7 @@ class Consumers(Agent):
         self.attitude_levels_pathways = [0] * len(self.model.all_EoL_pathways)
         
         self.attitude_level_reuse = \
-            self.attitude_level_distribution(
+            self.distribute_attitude_level(
                 a=(0 - att_distrib_param_reuse[0]) / att_distrib_param_reuse[1],
                 b=(1 - att_distrib_param_reuse[0]) / att_distrib_param_reuse[1],
                 loc=att_distrib_param_reuse[0],
@@ -212,7 +211,7 @@ class Consumers(Agent):
         
         self.random_interstate_distance = random.choice(self.distances_to_customers)
         
-        self.agent_breed() # Distribute the agent type (residential, non-residential).
+        self.distribute_agent_type() # Distribute the agent type (residential, non-residential).
         self.product_storage_to_other_ref = 0
         self.waste = []
         self.used_waste = []
@@ -262,7 +261,7 @@ class Consumers(Agent):
                 for i in range(len(mass_conversion_coeffs)) if mass_eol != 0])
         return mass_eol      
        
-    def attitude_level_distribution(self, a, b, loc, scale):
+    def distribute_attitude_level(self, a, b, loc, scale):
         """
         Distribute pro-environmental attitude level toward the decision in the
         population.
@@ -271,7 +270,7 @@ class Consumers(Agent):
         attitude_level = float(distribution.rvs(1))
         return attitude_level       
     
-    def agent_breed(self):
+    def distribute_agent_type(self):
         """
         Distribute the agent type (residential, non-residential).
         """
@@ -327,6 +326,7 @@ class Consumers(Agent):
         Update stock according to product growth and product failure
         Product failure is modeled with the Weibull function
         """
+        # Cumulative amount of EoL smartphones [S]
         additional_capacity = sum(self.number_product_hard_copy) * self.product_growth
         self.number_product_hard_copy.append(additional_capacity)
         self.number_product.append(self.number_product_hard_copy[-1])
@@ -351,7 +351,8 @@ class Consumers(Agent):
                 self.new_products_hard_copy[-1] = 0
                 self.model.sold_repaired_waste -= product_substituted
                 
-        # Generate waste, called by consumers and recyclers / refurbishers
+        # Generation of EOL smartphones (Weibull function) 
+        # called by consumers and recyclers / refurbishers
         self.waste = self.model.waste_generation(
             avg_lifetime=self.model.d_product_lifetimes, 
             failure_rate=self.failure_rate_alpha,
@@ -648,7 +649,7 @@ class Consumers(Agent):
             (self.model.dynamic_product_average_wght - self.model.product_average_wght) * \
             self.model.transportation_cost / 1E3 * self.model.mean_distance_within_state
          
-    def yearly_production_waste(self):
+    def update_yearly_production_waste(self):
         """
         Update total waste generated an yearly production.
         """
@@ -660,12 +661,13 @@ class Consumers(Agent):
         Costs from each EoL pathway and purchase choice and related perceived
         behavioral control are updated according to processes from other agents
         or own initiated costs.
+        𝑃𝐵𝐶 in End-of-life decision 
         """
-        for agent in self.model.schedule.agents:
+        for agent in self.model.schedule.agents: # recycling cost
             if agent.unique_id == self.recycling_facility_id:
                 self.perceived_behavioral_control[2] = agent.recycling_cost
             
-            elif agent.unique_id == self.refurbisher_id:
+            elif agent.unique_id == self.refurbisher_id: # repairing_cost
                 self.perceived_behavioral_control[0] = agent.repairing_cost
                 self.perceived_behavioral_control[1] = -1 * agent.scd_hand_price * (1 - agent.refurbisher_margin)
                 self.pbc_reuse[1] = agent.scd_hand_price
@@ -678,17 +680,16 @@ class Consumers(Agent):
         """
         Count amount of used product that are bought by consumers
         """
-        self.purchase_choice = \
-            self.tpb_decision(
-                decision="purchase_choice", 
-                list_choices=list(self.model.purchase_options.keys()),
-                EoL_pathways=self.model.all_EoL_pathways, 
-                weight_sn=self.w_sn_reuse, 
-                pbc_choice=self.pbc_reuse,
-                weight_pbc=self.w_pbc_reuse, 
-                att_levels_purchase=self.attitude_levels_purchase,
-                att_level_reuse=self.attitude_level_reuse, 
-                weight_a=self.w_a_reuse)
+        self.purchase_choice = self.tpb_decision(
+            decision="purchase_choice", 
+            list_choices=list(self.model.purchase_options.keys()),
+            EoL_pathways=self.model.all_EoL_pathways, 
+            weight_sn=self.w_sn_reuse, 
+            pbc_choice=self.pbc_reuse,
+            weight_pbc=self.w_pbc_reuse, 
+            att_levels_purchase=self.attitude_levels_purchase,
+            att_level_reuse=self.attitude_level_reuse, 
+            weight_a=self.w_a_reuse)
             
         if self.model.seeding["Seeding"] and self.model.clock >= self.model.seeding["Year"]:
             for consumer in range(self.model.seeding["number_seed"]):
@@ -706,7 +707,8 @@ class Consumers(Agent):
                         
         if self.purchase_choice == "new":
             self.number_product_new += self.number_product[-1]
-        elif self.EoL_pathway == "used":
+        # elif self.EoL_pathway == "used": # 原始代码可能有误
+        elif self.purchase_choice == "used": 
             self.number_product_used += self.number_product[-1]
         else:
             self.number_product_certified += self.number_product[-1]
@@ -776,11 +778,11 @@ class Consumers(Agent):
         self.update_transport_costs()
         # Update product growth from a list:
         if self.model.clock > self.model.growth_threshold:
-            self.product_growth = self.product_growth_list[1]
+            self.product_growth = self.product_growth_list[1] # growth rate of periods
         # Update stock according to product growth and product failure
         self.update_product_stock() 
         # Update total waste generated an yearly production.
-        self.yearly_production_waste() 
+        self.update_yearly_production_waste() 
         # Updated PBC according to processes from other agentsor or own initiated costs.
         self.update_perceived_behavioral_control()
         self.copy_perceived_behavioral_control = self.perceived_behavioral_control.copy()

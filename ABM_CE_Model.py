@@ -767,7 +767,7 @@ class ABM_CE_PV(Model):
         """
         correction_year = len(self.total_number_product) - 1
         return [j * (1 - math.e ** (-(((self.clock + (correction_year - z)) /
-                               avg_lifetime[z])**failure_rate))).real
+                               avg_lifetime[z]) ** failure_rate))).real
                 for (z, j) in enumerate(num_product)]
 
     def recycling_process_change(self):
