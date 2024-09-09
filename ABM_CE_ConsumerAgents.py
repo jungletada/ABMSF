@@ -257,7 +257,7 @@ class Consumers(Agent):
         
         mass_eol = sum(product_as_mass)
         self.weighted_average_mass_watt = sum(
-            [product_as_mass[i] / mass_eol * mass_conversion_coeffs[i] 
+            [product_as_mass[i] * mass_conversion_coeffs[i] / mass_eol 
                 for i in range(len(mass_conversion_coeffs)) if mass_eol != 0])
         return mass_eol      
        
@@ -351,7 +351,7 @@ class Consumers(Agent):
                 self.new_products_hard_copy[-1] = 0
                 self.model.sold_repaired_waste -= product_substituted
                 
-        # Generation of EOL smartphones (Weibull function) 
+        # Generation of EOL smartphones in fu (Weibull function) 
         # called by consumers and recyclers / refurbishers
         self.waste = self.model.waste_generation(
             avg_lifetime=self.model.d_product_lifetimes, 
@@ -529,8 +529,7 @@ class Consumers(Agent):
                 else:
                     removed_choice = key
 
-    def update_eol_volumes(self, eol_pathway, managed_waste, product_type,
-                           storage):
+    def update_eol_volumes(self, eol_pathway, managed_waste, product_type, storage):
         """"
         Assumes an average storage time for product stored. Also compute
         consumers' societal costs. Compute the costs paid by consumers. It
@@ -540,26 +539,22 @@ class Consumers(Agent):
         """
         if eol_pathway == "repair":
             self.number_product_repaired += managed_waste
-            self.consumer_costs += managed_waste * \
-                self.perceived_behavioral_control[0]
+            self.consumer_costs += managed_waste * self.perceived_behavioral_control[0]
             if product_type == "new":
                 self.number_new_prod_repaired += \
-                    self.mass_per_function_model(self.waste) + \
-                    self.weighted_average_mass_watt * storage
+                    self.mass_per_function_model(self.waste) + self.weighted_average_mass_watt * storage
             else:
-                self.number_used_prod_repaired += \
-                    self.mass_per_function_model(self.used_waste)
+                self.number_used_prod_repaired += self.mass_per_function_model(self.used_waste)
+                    
         elif eol_pathway == "sell":
             self.number_product_sold += managed_waste
-            self.consumer_costs += managed_waste * \
-                self.perceived_behavioral_control[1]
+            self.consumer_costs += managed_waste * self.perceived_behavioral_control[1]
             if product_type == "new":
                 self.number_new_prod_sold += \
-                    self.mass_per_function_model(self.waste) + \
-                    self.weighted_average_mass_watt * storage
+                    self.mass_per_function_model(self.waste) + self.weighted_average_mass_watt * storage
             else:
-                self.number_used_prod_sold += \
-                    self.mass_per_function_model(self.used_waste)
+                self.number_used_prod_sold += self.mass_per_function_model(self.used_waste)
+                    
         elif eol_pathway == "recycle":
             self.number_product_recycled += managed_waste
             if not self.model.epr_business_model:
@@ -572,27 +567,23 @@ class Consumers(Agent):
             else:
                 self.number_used_prod_recycled += \
                     self.mass_per_function_model(self.used_waste)
+                    
         elif eol_pathway == "landfill":
             self.number_product_landfilled += managed_waste
-            self.consumer_costs += managed_waste * \
-                self.perceived_behavioral_control[3]
+            self.consumer_costs += managed_waste * self.perceived_behavioral_control[3]
             if product_type == "new":
                 self.number_new_prod_landfilled += \
-                    self.mass_per_function_model(self.waste) + \
-                    self.weighted_average_mass_watt * storage
+                    self.mass_per_function_model(self.waste) + self.weighted_average_mass_watt * storage
             else:
-                self.number_used_prod_landfilled += \
-                    self.mass_per_function_model(self.used_waste)
-        else:
+                self.number_used_prod_landfilled += self.mass_per_function_model(self.used_waste)
+                    
+        else: # hoard
             self.number_product_hoarded += managed_waste
-            self.consumer_costs += managed_waste * \
-                self.perceived_behavioral_control[4]
+            self.consumer_costs += managed_waste * self.perceived_behavioral_control[4]
             if product_type == "new":
-                self.number_new_prod_hoarded += \
-                    self.mass_per_function_model(self.waste)
+                self.number_new_prod_hoarded += self.mass_per_function_model(self.waste)
             else:
-                self.number_used_prod_hoarded += \
-                    self.mass_per_function_model(self.used_waste)
+                self.number_used_prod_hoarded += self.mass_per_function_model(self.used_waste)
 
     def update_yearly_recycled_waste(self, installer):
         """
@@ -636,10 +627,8 @@ class Consumers(Agent):
         last_capacity_used = [0] * len(self.used_products_hard_copy)
         last_capacity_used[-1] = self.used_products_hard_copy[-1]
         
-        self.new_products_mass += \
-            self.mass_per_function_model(last_capacity_new)
-        self.used_products_mass += \
-            self.mass_per_function_model(last_capacity_used)
+        self.new_products_mass += self.mass_per_function_model(last_capacity_new)
+        self.used_products_mass += self.mass_per_function_model(last_capacity_used)
 
     def update_transport_costs(self):
         """
@@ -694,14 +683,14 @@ class Consumers(Agent):
         if self.model.seeding["Seeding"] and self.model.clock >= self.model.seeding["Year"]:
             for consumer in range(self.model.seeding["number_seed"]):
                 if self.unique_id == self.model.list_consumer_id_seed[consumer]:
-                    second_hand_p = 0
-                    repair_c = 0
+                    secondhand_price = 0
+                    repair_cost = 0
                     for agent in self.model.schedule.agents:
                         if agent.unique_id == self.refurbisher_id:
-                            second_hand_p = agent.scd_hand_price
-                            repair_c = agent.repairing_cost
+                            secondhand_price = agent.scd_hand_price
+                            repair_cost = agent.repairing_cost
                     self.purchase_choice = "used"
-                    self.model.cost_seeding += second_hand_p + repair_c + \
+                    self.model.cost_seeding += secondhand_price + repair_cost + \
                         self.random_interstate_distance * self.model.transportation_cost / 1E3 * \
                         self.model.dynamic_product_average_wght
                         
@@ -727,21 +716,21 @@ class Consumers(Agent):
         if product_type == "new": # new product
             self.storage_management(limited_paths)
             self.EoL_pathway = self.tpb_decision(
-                "EoL_pathway", 
-                list(self.model.all_EoL_pathways.keys()),
-                limited_paths, 
-                self.w_sn_eol,
-                self.perceived_behavioral_control, 
-                self.w_pbc_eol,
-                self.attitude_levels_pathways, 
-                self.attitude_level,
-                self.w_a_eol)
-            # HERE: self.number_product_EoL + self.product_storage_to_other
+                decision="EoL_pathway", 
+                list_choices=list(self.model.all_EoL_pathways.keys()),
+                EoL_pathways=limited_paths, 
+                weight_sn=self.w_sn_eol,
+                pbc_choice=self.perceived_behavioral_control, 
+                weight_pbc=self.w_pbc_eol,
+                att_levels_purchase=self.attitude_levels_pathways, 
+                att_level_reuse=self.attitude_level,
+                weight_a=self.w_a_eol)
+            
             self.update_eol_volumes(
-                self.EoL_pathway, 
-                self.number_product_EoL + self.product_storage_to_other,
-                product_type, 
-                self.product_storage_to_other)
+                eol_pathway=self.EoL_pathway, 
+                managed_waste=self.number_product_EoL + self.product_storage_to_other,
+                product_type=product_type, 
+                storage=self.product_storage_to_other)
             
         else:   # used product
             limited_paths["repair"] = False
@@ -749,21 +738,21 @@ class Consumers(Agent):
             limited_paths["hoard"] = False
             
             self.used_EoL_pathway = self.tpb_decision(
-                    "EoL_pathway", 
-                    list(self.model.all_EoL_pathways.keys()),
-                    limited_paths, 
-                    self.w_sn_eol,
-                    self.perceived_behavioral_control, 
-                    self.w_pbc_eol,
-                    self.attitude_levels_pathways, 
-                    self.attitude_level,
-                    self.w_a_eol)
+                    decision="EoL_pathway", 
+                    list_choices=list(self.model.all_EoL_pathways.keys()),
+                    limited_paths=limited_paths, 
+                    weight_sn=self.w_sn_eol,
+                    pbc_choice=self.perceived_behavioral_control, 
+                    weight_pbc=self.w_pbc_eol,
+                    att_levels_purchase=self.attitude_levels_pathways, 
+                    att_level_reuse=self.attitude_level,
+                    weight_a=self.w_a_eol)
             
             self.update_eol_volumes(
-                self.used_EoL_pathway,
-                self.number_used_product_EoL,
-                product_type,
-                self.product_storage_to_other)
+                eol_pathway=self.used_EoL_pathway,
+                managed_waste=self.number_used_product_EoL,
+                product_type=product_type,
+                storage=self.product_storage_to_other)
 
     def step(self):
         """
