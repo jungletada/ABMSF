@@ -8,8 +8,7 @@
 
 ## Diffuculties:
 1. Environment：美国50个州 $\rightarrow$ 日本各都道府县？
-2. 计算PV材料的Efficiency growth[S1]: ${MP}_t=be^{-at},$
-其中 $b$ and $a$ are the intercept and regression coefficient. PV通过function unit (fu)，计算得到PV材料的数量 $\rightarrow$ 计算手机数量(个)？ *PV质量为连续值，手机数量应为离散值.*   
+2. *PV质量为连续值，手机数量应为离散值.*  生产商生产手机，消费者购买手机.  
 代码对应于 `ABM_CE_ConsumerAgents.py`, 函数`mass_per_function_model(self, product_as_function):`
     ```python
     # product_average_wght (kg/fu), (b=0.1kg/Wp). fu=Wp

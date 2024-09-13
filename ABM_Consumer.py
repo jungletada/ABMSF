@@ -24,7 +24,7 @@ class Consumers(Agent):
 
     Attributes:
         unique_id: agent #, also relate to the node # in the network
-        model (see ABM_CE_PV_Model)
+        model: (see ABM_CE_PV_Model)
         product_growth (a list for a piecewise function, μ and τ: growth rate of periods) (ratio),
         (default=[0.166, 0.045]). From IRENA-IEA 2016
         failure_rate_alpha (a list for a triangular distribution), (default=
