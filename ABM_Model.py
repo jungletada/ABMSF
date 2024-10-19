@@ -17,7 +17,6 @@ from mesa.space import NetworkGrid
 from mesa.datacollection import DataCollector
 import networkx as nx
 import numpy as np
-# from math import *
 import matplotlib.pyplot as plt
 import pandas as pd
 import random
@@ -386,8 +385,13 @@ class ABM_CE_PV(Model):
         self.avg_failure_rate = failure_rate_alpha
         self.original_num_prod = total_number_product
         self.avg_lifetime = product_lifetime
-        self.fsthand_mkt_pric = fsthand_mkt_pric
-        self.fsthand_mkt_pric_reg_param = fsthand_mkt_pric_reg_param
+        
+        self.fsthand_mkt_pric = fsthand_mkt_pric                        #### delete
+        self.fsthand_mkt_pric_reg_param = fsthand_mkt_pric_reg_param    #### delete
+        
+        self.average_new_product_price = 5000   # TBD
+        self.average_second_hand_price = 2000 # TBD   
+        
         self.repairability = repairability
         
         self.total_waste = 0

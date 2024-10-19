@@ -15,6 +15,8 @@ from scipy.stats import truncnorm
 import operator
 import math
 
+from ABM_Smartphones import Smartphone
+
 
 class Consumers(Agent):
     """
@@ -105,7 +107,13 @@ class Consumers(Agent):
         self.number_used_prod_landfilled = 0
         self.number_used_prod_hoarded = 0
         self.product_storage_to_other = 0
+        
+        self.w_Att_tobuy = 0.55
+        self.w_SN_tobuy = 0.1
+        self.w_PBC_tobuy = 0.35
+        
         self.product_years_storage = []
+        
         self.max_storage = np.random.triangular(
             max_storage[0], max_storage[2], max_storage[1])
         
@@ -113,6 +121,8 @@ class Consumers(Agent):
         self.number_product_used = 0
         self.number_product_certified = 0
         
+        self.products_own = []  # No smartphones for begining
+        self.number_product_own = 0
         # Initiate EoL and purchase choice chosen by agents with a given ratio.
         self.EoL_pathway = self.initial_choice(list_choice=self.model.init_eol_rate)
         self.used_EoL_pathway = self.EoL_pathway
@@ -176,13 +186,9 @@ class Consumers(Agent):
         self.hoarding_cost = np.random.triangular(
             hoarding_cost[0], hoarding_cost[2], hoarding_cost[1]) * self.max_storage
 
-        #self.hoarding_cost = \
-        #    float(truncnorm((0 - hoarding_cost[0]) /
-        #                    hoarding_cost[1],
-        #                    (0.02 - hoarding_cost[0]) /
-        #                    hoarding_cost[1],
-        #                    hoarding_cost[0],
-        #                    hoarding_cost[1]).rvs(1)) * self.max_storage
+        # self.hoarding_cost = float(truncnorm((0 - hoarding_cost[0]) / hoarding_cost[1],
+        #                    (0.02 - hoarding_cost[0]) / hoarding_cost[1],
+        #                    hoarding_cost[0],hoarding_cost[1]).rvs(1)) * self.max_storage
         # HERE
 
         self.attitude_level = \
@@ -200,6 +206,7 @@ class Consumers(Agent):
                 loc=att_distrib_param_reuse[0],
                 scale=att_distrib_param_reuse[1])
             
+        self.to_purchase = 1 # use a threshold to decide to buy or not buy 
         self.purchase_choices = list(self.model.purchase_options.keys()) # new, used
         self.attitude_levels_purchase = [0] * len(self.purchase_choices)
         self.pbc_reuse = [self.model.fsthand_mkt_pric, np.nan, self.model.fsthand_mkt_pric] # ($/fu)
@@ -225,7 +232,52 @@ class Consumers(Agent):
         ## Distribute end-of-life management knowledge among agents.
         self.knowledge = self.extended_tpb_knowledge()
         #print("out func", self.knowledge)
-
+    
+    def decide_to_purchase(self):
+        """
+        Decide whether to purchase a smartphone based on TPB model.
+        Parameters:
+            Att (float): Attitude towards purchasing a smartphone.
+            SN (float): Subjective norm (social pressure).
+            PBC (float): Perceived behavioral control (ease of purchasing).
+            threshold (float): Decision threshold for making a purchase.
+        Returns:
+            bool: True if purchase is made, False otherwise.
+        """
+        # check smartphone status 
+        if len(self.products_own) == 0:
+            self.to_purchase = 1
+            return
+        
+        performance_count = 0
+        status_count = 0
+        for product in self.products_own:
+            performance_count += product.performance
+            status_count += product.status
+        if status_count == 0: 
+            self.to_purchase = 1
+            return        
+        
+        # decide attitude to buy
+        Att_not_buy = (performance_count + status_count) / (2 * len(self.products_own))
+        Att_buy = 1 - Att_not_buy
+        # decide subjective norm to buy
+        neighbors_nodes = self.model.grid.get_neighbors(self.pos, include_center=False)
+        SN_buy = len([agent for agent in self.model.grid.get_cell_list_contents(neighbors_nodes)
+            if getattr(agent, 'to_purchase') == 1]) / \
+            len([agent for agent in self.model.grid.get_cell_list_contents(neighbors_nodes)])
+        SN_not_buy = 1 - SN_buy
+        # decide PBC according to new and used product price
+        cost_buy = -1
+        cost_not_buy = 0
+        
+        BI_buy = self.w_Att_tobuy * Att_buy + self.w_SN_tobuy * SN_buy + self.w_PBC_tobuy * cost_buy
+        BI_not_buy = self.w_Att_tobuy * Att_not_buy + self.w_SN_tobuy * SN_not_buy + self.w_PBC_tobuy * cost_not_buy
+        if BI_buy > BI_not_buy:
+            self.to_purchase = 1    # Consumer decides to purchase
+        else:
+            self.to_purchase = 0
+    
     def initial_choice(self, list_choice):
             """
             Initiate the EoL pathway and purchase choice chosen by agents.
@@ -382,18 +434,14 @@ class Consumers(Agent):
         """
         Calculate subjective norm (peer pressure) component of EoL TPB rule
         """
-        neighbors_nodes = self.model.grid.get_neighbors(self.pos,
-                                                        include_center=False)
+        neighbors_nodes = self.model.grid.get_neighbors(self.pos, include_center=False)
         proportions_choices = []
         for i in range(len(list_choices)):
-            proportion_choice = len([
-                agent for agent in
-                self.model.grid.get_cell_list_contents(neighbors_nodes)
+            proportion_choice = len([agent for agent in self.model.grid.get_cell_list_contents(neighbors_nodes)
                 if getattr(agent, decision) == list_choices[i]]) / \
-                                len([agent for agent in
-                                     self.model.grid.get_cell_list_contents(
-                                                   neighbors_nodes)])
+                len([agent for agent in self.model.grid.get_cell_list_contents(neighbors_nodes)])
             proportions_choices.append(proportion_choice)
+            
         return [weight_sn * x for x in proportions_choices]
 
     def tpb_perceived_behavioral_control(self, decision, pbc_choice, weight_pbc):
@@ -407,9 +455,8 @@ class Consumers(Agent):
         if decision == "EoL_pathway":
             self.repairable_modules(pbc_choice)
             if self.model.extended_tpb["Extended tpb"]:
-                pbc_choice = \
-                    [self.convenience[i] + self.knowledge[i] + pbc_choice[i]
-                        for i in range(len(pbc_choice))]
+                pbc_choice = [self.convenience[i] + self.knowledge[i] + pbc_choice[i]
+                                for i in range(len(pbc_choice))]
                 max_cost = max(abs(i) for i in pbc_choice)
                 pbc_choice = [i / max_cost for i in pbc_choice]
         return [weight_pbc * -1 * max(i, 0) for i in pbc_choice]
@@ -421,10 +468,9 @@ class Consumers(Agent):
         """
         for i in range(len(att_levels_purchase)):
             if decision == "EoL_pathway":
-                if list(self.model.all_EoL_pathways.keys())[i] == "repair" or \
-                        list(self.model.all_EoL_pathways.keys())[i] == "sell" \
-                        or list(self.model.all_EoL_pathways.keys())[i] == \
-                        "recycle":
+                if  list(self.model.all_EoL_pathways.keys())[i] == "repair" or \
+                    list(self.model.all_EoL_pathways.keys())[i] == "sell" or \
+                    list(self.model.all_EoL_pathways.keys())[i] == "recycle":
                     att_levels_purchase[i] = att_level_reuse
                     # HERE modification for encouraging recycling
                     # if list(self.model.all_EoL_pathways.keys())[i] == "recycle":
@@ -472,9 +518,11 @@ class Consumers(Agent):
         # Subjective norm (peer pressure)
         sn_values = self.tpb_subjective_norm(
             decision, list_choices, weight_sn)
+        
         # Perceived behavioral control
         pbc_values = self.tpb_perceived_behavioral_control(
             decision, pbc_choice, weight_pbc)
+       
         # Pro-environmental attitude
         a_values = self.tpb_attitude(
             decision=decision, 
@@ -523,8 +571,7 @@ class Consumers(Agent):
                             new_installed_capacity += agent.number_product[-1]
                     used_volume_purchased = self.model.consumer_used_product \
                         / self.model.num_consumers * new_installed_capacity
-                if EoL_pathways.get(key) and key == "sell" and \
-                        self.sold_waste < used_volume_purchased:
+                if EoL_pathways.get(key) and key == "sell" and self.sold_waste < used_volume_purchased:
                     return key
                 else:
                     removed_choice = key
