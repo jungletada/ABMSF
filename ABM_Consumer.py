@@ -37,10 +37,13 @@ class Consumer(Agent):
         self.smartphone = None  # Consumer starts with no smartphone
 
         # To buy or not
-        self.w_A_tobuy = 0.45
-        self.w_SN_tobuy = 0.20
-        self.w_PBC_tobuy = 0.35
+        self.A_tobuy = 1
+        self.w_A_buy_or_not = 0.45
+        self.w_SN_buy_or_not = 0.20
+        self.w_PBC_buy_or_not = 1 - self.w_A_buy_or_not - self.w_SN_buy_or_not
+        
         self.EoL_pathway = None
+        self.to_buy = False
         
         # Get ID for recyclers and refurbisher
         self.recycling_facility_id = model.num_consumers + random.randrange(model.num_recyclers)
@@ -54,14 +57,11 @@ class Consumer(Agent):
         self.hoarding_cost = np.random.triangular(
             hoarding_cost[0], hoarding_cost[2], hoarding_cost[1]) * self.max_storage
             
-    def get_tpb_attitude(self, decision, att_level_ratios, att_level_reuse, weight_a):
+    def tpb_attitude(self, decision, att_level_ratios, att_level_reuse, weight_att):
         """
         Calculate pro-environmental attitude component of EoL TPB rule. Options
         considered pro environmental get a higher score than other options.
-        """
-        if decision == "to_buy":
-            return [weight_a * x for x in att_level_ratios]
-                    
+        """         
         all_EoL_pathways = list(self.model.all_EoL_pathways.keys())
         for i in range(len(att_level_ratios)):
             if decision == "EoL_pathway":
@@ -76,22 +76,36 @@ class Consumer(Agent):
                 else:
                     att_level_ratios[i] = 1 - att_level_reuse
                     
-        return [weight_a * x for x in att_level_ratios]
+        return [weight_att * x for x in att_level_ratios]
+    
+    def tpb_subjective_norm(self, decision, list_choices, weight_sn):
+        """
+        Calculate subjective norm (peer pressure) component of TPB rule
+        
+        """
+        neighbors_nodes = self.model.grid.get_neighbors(self.pos, include_center=False)
+        proportions_choices = []
+        
+        for i in range(len(list_choices)):
+            proportion_choice = len(
+                [agent for agent in self.model.grid.get_cell_list_contents(neighbors_nodes)
+                    if getattr(agent, decision) == list_choices[i]]) / \
+                                len([agent for agent in self.model.grid.get_cell_list_contents(neighbors_nodes)])
+            proportions_choices.append(proportion_choice)
+        return [weight_sn * x for x in proportions_choices]
     
     def tpb_perceived_behavioral_control(self, decision, pbc_choice, weight_pbc):
         """
-        Calculate perceived behavioral control component of EoL TPB rule.
+        Calculate perceived behavioral control component of TPB rule.
         behavioral control is understood as a function of financial costs.
-        考虑个人收入
         """
         max_cost = max(abs(i) for i in pbc_choice)
         pbc_choice = [i / max_cost for i in pbc_choice]
         if decision == "EoL_pathway":
             self.repairable_modules(pbc_choice)
             if self.model.extended_tpb["Extended tpb"]:
-                pbc_choice = \
-                    [self.convenience[i] + self.knowledge[i] + pbc_choice[i]
-                        for i in range(len(pbc_choice))]
+                pbc_choice = [self.convenience[i] + self.knowledge[i] + pbc_choice[i]
+                                for i in range(len(pbc_choice))]
                 max_cost = max(abs(i) for i in pbc_choice)
                 pbc_choice = [i / max_cost for i in pbc_choice]
         return [weight_pbc * -1 * max(i, 0) for i in pbc_choice]
@@ -105,17 +119,15 @@ class Consumer(Agent):
         of the subjective norm, the perceived behavioral control and attitude.
         """
         # Subjective norm (peer pressure)
-        sn_values = self.tpb_subjective_norm(
-            decision, list_choices, weight_sn)
+        sn_values = self.tpb_subjective_norm(decision, list_choices, weight_sn)
         # Perceived behavioral control
-        pbc_values = self.tpb_perceived_behavioral_control(
-            decision, pbc_choice, weight_pbc)
+        pbc_values = self.tpb_perceived_behavioral_control(decision, pbc_choice, weight_pbc)
         # Pro-environmental attitude
         a_values = self.tpb_attitude(
             decision=decision, 
             att_levels_purchase=att_levels_purchase, 
             att_level_reuse=att_level_reuse, 
-            weight_a=weight_a)
+            weight_att=weight_a)
         
         self.behavioral_intentions = [
             (pbc_values[i]) + sn_values[i] + a_values[i] 
@@ -164,22 +176,32 @@ class Consumer(Agent):
                 else:
                     removed_choice = key
     
-    def decide_to_purchase_or_not(self, A_tobuy, SN_tobuy, PBC_tobuy, threshold=0.5):
+    def attitude_to_buy(self):
+        pass
+        
+    def decide_to_purchase_or_not(self):
         """
         Decide whether to purchase a smartphone based on TPB model.
         Parameters:
-            A_tobuy (float): Attitude towards purchasing a smartphone.
-            SN_tobuy (float): Subjective norm (social pressure).
-            PBC_tobuy (float): Perceived behavioral control (ease of purchasing).
-            threshold (float): Decision threshold for making a purchase.
+            
         Returns:
             bool: True if purchase is made, False otherwise.
         """
         if self.smartphone is None or self.smartphone.status == 0:  # No smartphone or broken
             return True
         # TPB model
-        BI_it = self.w_A_tobuy * A_tobuy + self.w_SN_tobuy * SN_tobuy + self.w_PBC_tobuy * PBC_tobuy
-        if BI_it > threshold:
+        A_tobuy = self.attitude_to_buy()
+        neighbors_nodes = self.model.grid.get_neighbors(self.pos, include_center=False)
+        num_all_neighbors = len([agent for agent in self.model.grid.get_cell_list_contents(neighbors_nodes)])
+        proportion_tobuy = len(
+            [agent for agent in self.model.grid.get_cell_list_contents(neighbors_nodes)
+                if getattr(agent, 'to_buy')]) / num_all_neighbors
+        PBC_tobuy =  - (self.model.avg_price / self.model.highest_price)
+        
+        BI_tobuy = self.w_A_buy_or_not * A_tobuy + self.w_SN_buy_or_not * proportion_tobuy + self.w_PBC_buy_or_not * PBC_tobuy
+        BI_notbuy = self.w_A_buy_or_not * (1 -  A_tobuy) + self.w_SN_buy_or_not * (1 - proportion_tobuy) # PBC_notbuy = 0
+        
+        if BI_tobuy > BI_notbuy:
             return True  # Consumer decides to purchase
         return False
 
@@ -194,7 +216,7 @@ class Consumer(Agent):
         Returns:
             str: "new" or "used" based on the decision.
         """
-        BI_used = self.w_A_tobuy * A_used + self.w_A_tobuy * SN_used +self.w_A_tobuy * PBC_used
+        BI_used = self.w_A_buy_or_not * A_used + self.w_A_buy_or_not * SN_used +self.w_A_buy_or_not * PBC_used
         if BI_used > threshold:
             return "used"
         return "new"
