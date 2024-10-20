@@ -223,7 +223,7 @@ class ABM_CE_PV(Model):
                  consumers_distribution={"residential": 1,
                                          "commercial": 0., "utility": 0.},
                  init_eol_rate={"repair": 0.005, "sell": 0.01, "recycle": 0.1, "landfill": 0.4425, "hoard": 0.4425},
-                 init_purchase_choice={"new": 0.9995, "used": 0.0005, "certified": 0},
+                 init_purchase_rate={"new": 0.9995, "used": 0.0005},
                  total_number_product=[38, 38, 38, 38, 38, 38, 38, 139, 251,
                                        378, 739, 1670, 2935, 4146, 5432, 6525,
                                        3609, 4207, 4905, 5719],
@@ -366,7 +366,7 @@ class ABM_CE_PV(Model):
         self.prod_n_recyc_network_type = prod_n_recyc_network_type
         
         self.init_eol_rate = init_eol_rate # dictionary with initial end-of-life (EOL) ratios
-        self.init_purchase_choice = init_purchase_choice # dictionary with initial purchase ratios
+        self.init_purchase_choice = init_purchase_rate # dictionary with initial purchase ratios
         
         self.total_number_product = total_number_product # a list for the whole population
         self.copy_total_number_product = self.total_number_product.copy()

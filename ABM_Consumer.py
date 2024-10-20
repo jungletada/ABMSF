@@ -40,13 +40,31 @@ class Consumer(Agent):
 
         # To buy or not
         self.A_tobuy = 1
+        self.decision = None
+        self.pathway_choice = None
+        self.EoL_pathway = None
+        self.to_buy = False
+        
         self.w_A_buy_or_not = 0.45
         self.w_SN_buy_or_not = 0.20
         self.w_PBC_buy_or_not = 1 - self.w_A_buy_or_not - self.w_SN_buy_or_not
         
-        self.EoL_pathway = None
-        self.to_buy = False
+        # column sum up to 1
+        self.weight_att_eol = {"repair": 0.005, "sell": 0.01, "recycle": 0.1, "landfill": 0.4425, "hoard": 0.4425} 
+        self.weight_sn_eol = {"repair": 0.005, "sell": 0.01, "recycle": 0.1, "landfill": 0.4425, "hoard": 0.4425} 
+        self.weight_pbc_eol = {"repair": 0.005, "sell": 0.01, "recycle": 0.1, "landfill": 0.4425, "hoard": 0.4425} 
         
+        # column sum up to 1
+        self.weight_att_purchase = {'used': 0.05, 'new': 0.95}
+        self.weight_sn_purchase = {'used': 0.05, 'new': 0.95}
+        self.weight_pbc_purchase = {'used': 0.05, 'new': 0.95}
+        
+        self.eol_pathway_choices = self.model.init_eol_rate.keys()
+        self.purchase_choices = self.model.init_purchase_rate.keys()
+        
+        self.pbc_costs_purchase = {'used': 2000, 'new': 4000}
+        self.pbc_costs_eol = {"repair": 0.005, "sell": 0.01, "recycle": 0.1, "landfill": 0.4425, "hoard": 0.4425} 
+
         # Get ID for recyclers and refurbisher
         self.recycling_facility_id = model.num_consumers + random.randrange(model.num_recyclers)
         self.refurbisher_id = model.num_consumers + model.num_prod_n_recyc + \
@@ -70,16 +88,14 @@ class Consumer(Agent):
         Returns:
             att_level_ratios (dict): A dictionary containing the calculated attitude levels for each option,
                                      weighted by the corresponding attitude weight.
-        Return
         """
         att_level_ratios = {}
-        all_EoL_pathways = list(self.model.all_EoL_pathways.keys())
-        for i, pathway in enumerate(all_EoL_pathways):
+        for i, pathway in enumerate(self.eol_pathway_choices):
             if decision == "EoL_pathway":
                 if pathway in ["repair", "sell", "recycle"]:
                     att_level_ratios[pathway] = att_level_reuse * weight_att[pathway]
                 else:
-                    att_level_ratios[pathway] = (1 - att_level_reuse) * att_level_ratios
+                    att_level_ratios[pathway] = (1 - att_level_reuse) * weight_att[pathway]
             
             elif decision == "purchase_choice":
                 if self.purchase_choices[i] == "used":
@@ -89,11 +105,10 @@ class Consumer(Agent):
         
         return att_level_ratios
     
-    def tpb_subjective_norm(self, decision, list_choices, weight_sn):
+    def tpb_subjective_norm(self, decision, weight_sn):
         """
         Parameters:
             decision (str): The type of decision being made (e.g., "repair, sell, recycle" or "used, new").
-            list_choices (list): A list of possible choices for the decision.
             weight_sn (dict): A dictionary of weights for each choice in the subjective norm calculation.
         Returns:
             proportion_sn (dict): A dictionary containing the proportion of neighbors making each choice, 
@@ -104,8 +119,14 @@ class Consumer(Agent):
         neighbor_agents = list(self.model.grid.get_cell_list_contents(neighbors_nodes))
         proportion_sn = {}
         
+        if decision == "EoL_pathway":
+            list_choices = self.eol_pathway_choices
+        else:
+            list_choices = self.purchase_choices
+            
         for choice in list_choices:
-            proportion_choice = sum(1 for agent in neighbor_agents if getattr(agent, decision) == choice) / len(neighbor_agents)
+            proportion_choice = sum(1 for agent in neighbor_agents 
+                                        if getattr(agent, 'pathway_choice') == choice) / len(neighbor_agents)
             proportion_sn[choice] = proportion_choice * weight_sn[choice]
 
         return proportion_sn
@@ -140,32 +161,42 @@ class Consumer(Agent):
             max_eol = max(abs(i) for i in pbc_eol.values())
             return {key: -1 * value / max_eol * weight_pbc[key] for key, value in pbc_eol.items()}
     
-    def tpb_decision(self, decision, list_choices, EoL_pathways, 
-                     weight_sn, pbc_choice, weight_pbc, 
-                     att_levels_purchase, att_level_reuse, weight_a):
+    def tpb_decision(self, 
+                     decision, 
+                     weight_att, 
+                     weight_sn, 
+                     weight_pbc, 
+                     pbc_costs, 
+                     att_level_reuse):
         """
         Select the decision with highest behavioral intention following the
         Theory of `Planned Bahevior` (TPB). `Behavioral intention` is a function
         of the subjective norm, the perceived behavioral control and attitude.
+        Parameters:
+            decision (str): The type of decision being made (e.g., "EoL_pathway" or "purchase_choice").
+            pbc_costs (dict): A dictionary containing the costs associated with each option.
         """
         # Subjective norm (peer pressure)
-        sn_values = self.tpb_subjective_norm(decision, list_choices, weight_sn)
+        sn_values = self.tpb_subjective_norm(decision, weight_sn)
         # Perceived behavioral control
-        pbc_values = self.tpb_perceived_behavioral_control(decision, pbc_choice, weight_pbc)
+        pbc_values = self.tpb_perceived_behavioral_control(decision, pbc_costs, weight_pbc)
         # Pro-environmental attitude
-        a_values = self.tpb_attitude(
+        att_values = self.tpb_attitude(
             decision=decision,
-            att_level_ratios=att_levels_purchase,
             att_level_reuse=att_level_reuse,
-            weight_att=weight_a)
+            weight_att=weight_att)
         
-        self.behavioral_intentions = [
-            (pbc_values[i]) + sn_values[i] + a_values[i]
-                for i in range(len(pbc_values))]
-        
-        self.pathways_and_BI = {
-            list_choices[i]: self.behavioral_intentions[i]
-                for i in range(len(list_choices))}
+        if decision == "EoL_pathway":
+            list_choices = self.eol_pathway_choices
+        else:
+            list_choices = self.purchase_choices
+            
+        self.behavior_intention = {}
+        for choice in list_choices:
+            self.behavior_intention[choice] = pbc_values[choice] + sn_values[choice] + att_values[choice]
+
+        self.pathway_choice = max(self.behavior_intention, key=self.behavior_intention.get)
+        print(f'Consumer {self.unique_id} decides to {self.pathway_choice}.')
 
     def attitude_to_buy(self):
         """Depends on the incomes of the consumer"""
@@ -181,7 +212,7 @@ class Consumer(Agent):
             bool: True if purchase is made, False otherwise.
         """
         if self.smartphone is None or self.smartphone.status == 0:  # No smartphone or broken
-            return True
+            self.to_buy = True
         # TPB model
         A_tobuy = self.attitude_to_buy()
         neighbors_nodes = self.model.grid.get_neighbors(self.pos, include_center=False)
@@ -194,25 +225,7 @@ class Consumer(Agent):
         BI_tobuy = self.w_A_buy_or_not * A_tobuy + self.w_SN_buy_or_not * proportion_tobuy + self.w_PBC_buy_or_not * PBC_tobuy
         BI_notbuy = self.w_A_buy_or_not * (1 -  A_tobuy) + self.w_SN_buy_or_not * (1 - proportion_tobuy) # PBC_notbuy = 0
         
-        if BI_tobuy > BI_notbuy:
-            return True  # Consumer decides to purchase
-        return False
-
-    def decide_purchase_new_or_used(self, A_used, SN_used, PBC_used, threshold=0.5):
-        """
-        Decide whether to buy new or used smartphone.
-        Parameters:
-            A_used (float): Attitude towards purchasing a used smartphone.
-            SN_used (float): Subjective norm towards purchasing used.
-            PBC_used (float): Perceived behavioral control for purchasing used.
-            threshold (float): Decision threshold for making a choice.
-        Returns:
-            str: "new" or "used" based on the decision.
-        """
-        BI_used = self.w_A_buy_or_not * A_used + self.w_A_buy_or_not * SN_used +self.w_A_buy_or_not * PBC_used
-        if BI_used > threshold:
-            return "used"
-        return "new"
+        self.to_buy = True if BI_tobuy > BI_notbuy else False
 
     def use_smartphone(self):
         """
@@ -220,19 +233,6 @@ class Consumer(Agent):
         """
         if self.smartphone:
             self.smartphone.update_time_held()
-
-    def decide_end_of_life(self):
-        """
-        {"repair": 0.005, "sell": 0.01, "recycle": 0.1, "landfill": 0.4425, "hoard": 0.4425}
-        Decide the end-of-life pathway (EoL) for the smartphone (recycle, landfill, etc.).
-        Returns: 
-            str: EoL decision ("recycle", "landfill", "sell").
-        """
-        # Basic decision process (can be expanded with more detailed conditions)
-        if self.smartphone.status == 0:  # Broken smartphone
-            return random.choice(["recycle", "landfill", "sell"])  # Random choice for now
-        else:
-            return "keep using"
 
     def purchase_smartphone(self, market):
         """
@@ -289,33 +289,43 @@ class Consumer(Agent):
     def step(self):
         """
         Main simulation step for the consumer.
-        Parameters:
-            
         """
-        # Step 1: Check if the consumer needs a new smartphone
-        to_buy = self.decide_to_purchase_or_not()
+        # Step 1: Check if the consumer needs a new smartphone and update 'self.to_buy'
+        self.decide_to_purchase_or_not()
         
-        if to_buy:
+        if self.to_buy: 
             # Step 2.1: Decide whether to purchase new or used smartphone
-            market_choice = self.decide_purchase_new_or_used()
-            self.purchase_smartphone(market_choice)
+            # update 'self.pathway_choice'
+            self.tpb_decision(decision='purchase_choice',
+                              weight_att=self.weight_att_purchase, 
+                              weight_sn=self.weight_sn_purchase, 
+                              weight_pbc=self.weight_pbc_purchase, 
+                              pbc_costs=self.pbc_costs_purchase, 
+                              att_level_reuse=0.7) 
+            self.purchase_smartphone(self.pathway_choice)
             self.use_smartphone()
-            # print(f"Consumer {self.unique_id} decided to purchase a {market_choice} smartphone.")
         else:
             # Step 2.2: Use the smartphone and check EoL decision
-            eol_decision = self.decide_end_of_life()
-            if eol_decision == "hoard":
+            # update 'self.pathway_choice'
+            self.tpb_decision(decision='EoL_pathway',
+                              weight_att=self.weight_att_eol, 
+                              weight_sn=self.weight_sn_eol, 
+                              weight_pbc=self.weight_pbc_eol, 
+                              pbc_costs=self.pbc_costs_eol, 
+                              att_level_reuse=0.2) 
+            
+            if self.pathway_choice == "hoard":
                 self.use_smartphone()
                 
-            elif eol_decision == "sell":
+            elif self.pathway_choice == "sell":
                 self.sell_smartphone()
                 
-            elif eol_decision == "recycle":
+            elif self.pathway_choice == "recycle":
                 self.recycle_smartphone()
                 
-            elif eol_decision == "landfill":
+            elif self.pathway_choice == "landfill":
                 self.landfill_smartphone()
                 
-            elif eol_decision == "repair":
+            elif self.pathway_choice == "repair":
                 self.repair_smartphone()
                 
