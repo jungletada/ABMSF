@@ -23,7 +23,9 @@ def distribute_attitude_level(a, b, loc, scale):
 class Consumer(Agent):
     def __init__(self, unique_id, model, 
                  own_incomes,
-                 w_A=0.3, w_SN=0.3, w_PBC=0.4,):
+                 w_A=0.3, w_SN=0.3, w_PBC=0.4,
+                 landfill_cost=100,
+                 hoarding_cost=[2,1,2]):
         """
         Initialize a Consumer agent.
 
@@ -57,58 +59,86 @@ class Consumer(Agent):
         self.hoarding_cost = np.random.triangular(
             hoarding_cost[0], hoarding_cost[2], hoarding_cost[1]) * self.max_storage
             
-    def tpb_attitude(self, decision, att_level_ratios, att_level_reuse, weight_att):
+    def tpb_attitude(self, decision, att_level_reuse, weight_att):
         """
         Calculate pro-environmental attitude component of EoL TPB rule. Options
         considered pro environmental get a higher score than other options.
-        """         
+        Parameters:
+            decision (str): The type of decision being made (e.g., "EoL_pathway" or "purchase_choice").
+            att_level_reuse (float): The attitude level towards reuse/pro-environmental options.
+            weight_att (dict): A dictionary of weights for each option in the attitude calculation.
+        Returns:
+            att_level_ratios (dict): A dictionary containing the calculated attitude levels for each option,
+                                     weighted by the corresponding attitude weight.
+        Return
+        """
+        att_level_ratios = {}
         all_EoL_pathways = list(self.model.all_EoL_pathways.keys())
-        for i in range(len(att_level_ratios)):
+        for i, pathway in enumerate(all_EoL_pathways):
             if decision == "EoL_pathway":
-                if all_EoL_pathways[i] == "repair" or all_EoL_pathways[i] == "sell" or all_EoL_pathways[i] == "recycle":
-                    att_level_ratios[i] = att_level_reuse
+                if pathway in ["repair", "sell", "recycle"]:
+                    att_level_ratios[pathway] = att_level_reuse * weight_att[pathway]
                 else:
-                    att_level_ratios[i] = 1 - att_level_reuse
-                    
+                    att_level_ratios[pathway] = (1 - att_level_reuse) * att_level_ratios
+            
             elif decision == "purchase_choice":
                 if self.purchase_choices[i] == "used":
-                    att_level_ratios[i] = att_level_reuse
+                    att_level_ratios[pathway] = att_level_reuse * weight_att[pathway]
                 else:
-                    att_level_ratios[i] = 1 - att_level_reuse
-                    
-        return [weight_att * x for x in att_level_ratios]
+                    att_level_ratios[pathway] = (1 - att_level_reuse) * weight_att[pathway]
+        
+        return att_level_ratios
     
     def tpb_subjective_norm(self, decision, list_choices, weight_sn):
         """
+        Parameters:
+            decision (str): The type of decision being made (e.g., "repair, sell, recycle" or "used, new").
+            list_choices (list): A list of possible choices for the decision.
+            weight_sn (dict): A dictionary of weights for each choice in the subjective norm calculation.
+        Returns:
+            proportion_sn (dict): A dictionary containing the proportion of neighbors making each choice, 
+                weighted by the corresponding subjective norm weight.
         Calculate subjective norm (peer pressure) component of TPB rule
-        
         """
         neighbors_nodes = self.model.grid.get_neighbors(self.pos, include_center=False)
-        proportions_choices = []
+        neighbor_agents = list(self.model.grid.get_cell_list_contents(neighbors_nodes))
+        proportion_sn = {}
         
-        for i in range(len(list_choices)):
-            proportion_choice = len(
-                [agent for agent in self.model.grid.get_cell_list_contents(neighbors_nodes)
-                    if getattr(agent, decision) == list_choices[i]]) / \
-                                len([agent for agent in self.model.grid.get_cell_list_contents(neighbors_nodes)])
-            proportions_choices.append(proportion_choice)
-        return [weight_sn * x for x in proportions_choices]
+        for choice in list_choices:
+            proportion_choice = sum(1 for agent in neighbor_agents if getattr(agent, decision) == choice) / len(neighbor_agents)
+            proportion_sn[choice] = proportion_choice * weight_sn[choice]
+
+        return proportion_sn
     
-    def tpb_perceived_behavioral_control(self, decision, pbc_choice, weight_pbc):
+    def tpb_perceived_behavioral_control(self, decision, pbc_costs, weight_pbc):
         """
-        Calculate perceived behavioral control component of TPB rule.
-        behavioral control is understood as a function of financial costs.
+        Parameters:
+            decision (str): The type of decision being made (e.g., "EoL_pathway" or "purchase_choice").
+            pbc_costs (dict): A dictionary containing the costs associated with each option.
+            weight_pbc (dict): A dictionary of weights for each option in the perceived behavioral control calculation.
+        
+        Returns:
+            dict: A dictionary containing the calculated perceived behavioral control values for each option,
+                  normalized and weighted by the corresponding PBC weight.
+        
+        This function calculates the perceived behavioral control (PBC) component of the Theory of Planned Behavior (TPB) rule.
+        For purchase decisions, it considers only the financial costs. For End-of-Life (EoL) pathway decisions, it may also
+        include factors like convenience and knowledge if the extended TPB model is enabled.
         """
-        max_cost = max(abs(i) for i in pbc_choice)
-        pbc_choice = [i / max_cost for i in pbc_choice]
-        if decision == "EoL_pathway":
-            self.repairable_modules(pbc_choice)
+        # PBC for purchasing smartphones
+        max_cost = max(abs(i) for i in pbc_costs.values())
+        if decision == "purchase_choice":
+            return {key: -1 * value / max_cost * weight_pbc[key] for key, value in pbc_costs.items()}
+        
+        # PBC for EoL pathways
+        elif decision == "EoL_pathway":
+            pbc_eol = {}
+            self.repairable_modules(pbc_costs)
             if self.model.extended_tpb["Extended tpb"]:
-                pbc_choice = [self.convenience[i] + self.knowledge[i] + pbc_choice[i]
-                                for i in range(len(pbc_choice))]
-                max_cost = max(abs(i) for i in pbc_choice)
-                pbc_choice = [i / max_cost for i in pbc_choice]
-        return [weight_pbc * -1 * max(i, 0) for i in pbc_choice]
+                for key in pbc_costs.keys():
+                    pbc_eol[key] = self.convenience[key] + self.knowledge[key] + (pbc_costs[key] / max_cost)
+            max_eol = max(abs(i) for i in pbc_eol.values())
+            return {key: -1 * value / max_eol * weight_pbc[key] for key, value in pbc_eol.items()}
     
     def tpb_decision(self, decision, list_choices, EoL_pathways, 
                      weight_sn, pbc_choice, weight_pbc, 
@@ -124,59 +154,22 @@ class Consumer(Agent):
         pbc_values = self.tpb_perceived_behavioral_control(decision, pbc_choice, weight_pbc)
         # Pro-environmental attitude
         a_values = self.tpb_attitude(
-            decision=decision, 
-            att_levels_purchase=att_levels_purchase, 
-            att_level_reuse=att_level_reuse, 
+            decision=decision,
+            att_level_ratios=att_levels_purchase,
+            att_level_reuse=att_level_reuse,
             weight_att=weight_a)
         
         self.behavioral_intentions = [
-            (pbc_values[i]) + sn_values[i] + a_values[i] 
+            (pbc_values[i]) + sn_values[i] + a_values[i]
                 for i in range(len(pbc_values))]
         
         self.pathways_and_BI = {
             list_choices[i]: self.behavioral_intentions[i]
                 for i in range(len(list_choices))}
-        
-        shuffled_dic = list(self.pathways_and_BI.items())
-        random.shuffle(shuffled_dic)
-        self.pathways_and_BI = OrderedDict(shuffled_dic)
-        
-        for key, value in self.pathways_and_BI.items():
-            if value == np.nan:
-                return self.EoL_pathway
-            
-        conditions = False
-        removed_choice = None
-        
-        while not conditions:
-            if removed_choice is not None:
-                self.pathways_and_BI.pop(removed_choice)
-            if decision == "purchase_choice":
-                key = max(self.pathways_and_BI.items(),
-                          key=operator.itemgetter(1))[0]
-                if self.model.purchase_options.get(key):
-                    return key
-                else:
-                    removed_choice = key
-            else:
-                key = max(self.pathways_and_BI.items(),
-                          key=operator.itemgetter(1))[0]
-                if EoL_pathways.get(key) and key != "sell":
-                    return key
-                else:
-                    new_installed_capacity = 0
-                    for agent in self.model.schedule.agents:
-                        if agent.unique_id < self.model.num_consumers:
-                            new_installed_capacity += agent.number_product[-1]
-                    used_volume_purchased = self.model.consumer_used_product \
-                        / self.model.num_consumers * new_installed_capacity
-                if EoL_pathways.get(key) and key == "sell" and \
-                        self.sold_waste < used_volume_purchased:
-                    return key
-                else:
-                    removed_choice = key
-    
+
     def attitude_to_buy(self):
+        """Depends on the incomes of the consumer"""
+        
         pass
         
     def decide_to_purchase_or_not(self):
@@ -192,7 +185,7 @@ class Consumer(Agent):
         # TPB model
         A_tobuy = self.attitude_to_buy()
         neighbors_nodes = self.model.grid.get_neighbors(self.pos, include_center=False)
-        num_all_neighbors = len([agent for agent in self.model.grid.get_cell_list_contents(neighbors_nodes)])
+        num_all_neighbors = len(list(self.model.grid.get_cell_list_contents(neighbors_nodes)))
         proportion_tobuy = len(
             [agent for agent in self.model.grid.get_cell_list_contents(neighbors_nodes)
                 if getattr(agent, 'to_buy')]) / num_all_neighbors
