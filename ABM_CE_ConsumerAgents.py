@@ -185,16 +185,14 @@ class Consumers(Agent):
         #                    hoarding_cost[1]).rvs(1)) * self.max_storage
         # HERE
 
-        self.attitude_level = \
-            self.distribute_attitude_level(
+        self.attitude_level = self.distribute_attitude_level(
                 a=(0 - att_distrib_param_eol[0]) / att_distrib_param_eol[1],
                 b=(1 - att_distrib_param_eol[0]) / att_distrib_param_eol[1],
                 loc=att_distrib_param_eol[0],
                 scale=att_distrib_param_eol[1]) # [List] bounded normal distribution
         self.attitude_levels_pathways = [0] * len(self.model.all_EoL_pathways)
         
-        self.attitude_level_reuse = \
-            self.distribute_attitude_level(
+        self.attitude_level_reuse = self.distribute_attitude_level(
                 a=(0 - att_distrib_param_reuse[0]) / att_distrib_param_reuse[1],
                 b=(1 - att_distrib_param_reuse[0]) / att_distrib_param_reuse[1],
                 loc=att_distrib_param_reuse[0],
