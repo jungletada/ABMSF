@@ -21,8 +21,7 @@ def distribute_attitude_level(a, b, loc, scale):
     
     
 class Consumer(Agent):
-    def __init__(self, unique_id, model, 
-                 own_incomes,
+    def __init__(self, unique_id, model, income, attitude_purchase,
                  w_A=0.3, w_SN=0.3, w_PBC=0.4,
                  landfill_cost=100,
                  hoarding_cost=[2,1,2]):
@@ -49,6 +48,8 @@ class Consumer(Agent):
         self.w_SN_buy_or_not = 0.20
         self.w_PBC_buy_or_not = 1 - self.w_A_buy_or_not - self.w_SN_buy_or_not
         
+        self.income = income
+        self.attitude_purchase = attitude_purchase
         # column sum up to 1
         self.weight_att_eol = {"repair": 0.005, "sell": 0.01, "recycle": 0.1, "landfill": 0.4425, "hoard": 0.4425} 
         self.weight_sn_eol = {"repair": 0.005, "sell": 0.01, "recycle": 0.1, "landfill": 0.4425, "hoard": 0.4425} 
@@ -76,7 +77,7 @@ class Consumer(Agent):
         # HERE
         self.hoarding_cost = np.random.triangular(
             hoarding_cost[0], hoarding_cost[2], hoarding_cost[1]) * self.max_storage
-            
+
     def tpb_attitude(self, decision, att_level_reuse, weight_att):
         """
         Calculate pro-environmental attitude component of EoL TPB rule. Options
