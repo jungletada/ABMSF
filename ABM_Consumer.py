@@ -240,6 +240,8 @@ class Consumer(Agent):
         Simulate the purchase of a smartphone from the market.
         Parameters:
             market (str): Indicates whether to purchase from the "new" or "used" market.
+        Return:
+          XXXXX
         """
         if market == "new":
             self.smartphone = Smartphone(is_new=True, purchase_price=1000)
