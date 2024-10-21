@@ -1,17 +1,23 @@
 import random
-import math 
+import math
+
+# Newly add:
+#   model.num_handled_phones
+#   model.initial_phones_handled
 
 
 class Smartphone:
-    def __init__(self, 
-                 is_new=True, 
-                 performance=1.0, 
-                 time_held=0, 
-                 status=1, 
-                 purchase_price=1000, 
-                 repair_cost=200, 
+    """Represents a smartphone in the agent-based model simulation."""
+
+    def __init__(self,
+                 is_new,
+                 model,
+                 performance=1.0,
+                 time_held=0,
+                 status=1,
+                 purchase_price=1000,
+                 repair_cost=200,
                  initial_agent_repair_cost=500.0,
-                 initial_phones_handled=0,
                  decay_rate=0.1,
                  user_id=None):
         """
@@ -29,6 +35,7 @@ class Smartphone:
             decay_rate (float): The rate at which the performance degrades over time (exponential decay).
             user_id (int/None): ID of the current user who holds the phone (could be a consumer or second-hand store).
         """
+        self.model = model
         self.is_new = is_new # True：new smartphone; False: used smartphone
         self.performance = performance  # Range from 0 to 1, where 1 is perfect condition
         self.time_held = time_held  # Number of time units (e.g., months or years) held by the user
@@ -36,15 +43,14 @@ class Smartphone:
         self.purchase_price = purchase_price  # Purchase price from the new market
         self.repair_cost = repair_cost  # Repair cost if the phone is broken
         self.initial_agent_repair_cost = initial_agent_repair_cost # Initial repair cost for second-hand store and recycler.
-        self.initial_phones_handled = initial_phones_handled # Initial number of phones handled by the store and recycler.
         self.user_id = user_id  # ID of the current user holding this phone
         self.decay_rate = decay_rate # Rate at which the performance degrades (lambda in the exponential decay model)
         
         # Additional attributes
         self.eol_probability = 0.05  # Probability that the phone reaches end-of-life per time step
-        self.resell_value = self.calculate_resell_value()  # Value if resold in the second-hand market
+        self.resell_value = self.calculate_resell_price()  # Value if resold in the second-hand market
         self.warranty_duration = 12 if self.is_new else 0  # New phones come with 12 months warranty
-    
+
     def degrade_performance(self):
         """
         Simulate the degradation of performance over time using an exponential decay model with Gaussian noise.
@@ -63,13 +69,13 @@ class Smartphone:
                 self.status = 0  # Phone breaks down if end-of-life probability is reached or performance too low
         else:
             self.performance = 0  # If phone is broken, performance is zero
-    
+
     def update_time_held(self):
         """Increment the time held by the user."""
         self.time_held += 1
         self.degrade_performance()
-       
-    def calculate_repair_cost(self, store_handled_phones):
+
+    def calculate_repair_cost(self):
         """Attempt to repair the phone, considering warranty status and learning effects.
 
         If the phone is under warranty (self.time_held < self.warranty_duration), 
@@ -84,42 +90,46 @@ class Smartphone:
         
         else:  # Phone is out of warranty, calculate repair cost based on performance and learning effect
             epsilon = 0.5
-            C_max = 0.2 * self.purchase_price  # Set the maximum repair cost (20% of purchase price)
+            cost_max = 0.2 * self.purchase_price  # Set the maximum repair cost (20% of purchase price)
             # Basic repair cost based on performance
-            basic_repair_cost = C_max * (1 - self.performance)
+            basic_repair_cost = cost_max * (1 - self.performance)
             # Learning effect: Reduce cost based on the number of phones handled by the store
-            learning_factor = self.initial_agent_repair_cost * (store_handled_phones / max(1, self.initial_phones_handled))
-            self.repair_cost = basic_repair_cost * epsilon * learning_factor
-
+            learning_factor = self.initial_agent_repair_cost * (self.model.num_handled_phones / max(1, self.model.initial_phones_handled))
+            self.repair_cost = basic_repair_cost + epsilon * learning_factor
             print(f"Phone is out of warranty. Repair cost with learning effect: {self.repair_cost:.2f}")
-        
+            return self.repair_cost
+    
+    def repair_product(self):
+        """Attempt to repair the phone with a random chance of success."""
         # Attempt to repair the phone
         repair_success = random.random()  # Random chance to repair the phone
-        if repair_success > 0.5:  # 50% chance of successful repair
+        if repair_success > 0.9:  # 50% chance of successful repair
             self.status = 1
             self.performance = min(0.9, self.performance + 0.3)  # Performance improves after repair
             return True  # Repair was successful
-        else:
-            return False  # Repair failed
-        
-        # Attempt to repair the phone
-        repair_success = random.random()  # Random chance to repair the phone
-        if repair_success > 0.5:  # 50% chance of successful repair
-            self.status = 1
-            self.performance = min(0.9, self.performance + 0.3)  # Performance improves after repair
-            return True  # Repair was successful
-        else:
-            return False  # Repair failed
+        return False  # Repair failed
 
-    def calculate_resell_value(self):
-        """卖出到二手商
-        Calculate the resell value of the smartphone based on performance, status, and age."""
+    def calculate_resell_price(self):
+        """
+        Calculate the resell value of the smartphone based on performance, status, and age.
+        """
         depreciation_factor = 0.8 if self.is_new else 0.6
         age_factor = max(0, 1 - 0.05 * self.time_held)  # The longer the time held, the lower the value
-        resell_value = self.purchase_price * depreciation_factor * self.performance * age_factor
-        return resell_value
+        resell_price = self.purchase_price * depreciation_factor * self.performance * age_factor
+        return resell_price
     
-    def sell(self, new_owner_id):
+    def calculate_recycle_price(self):
+        """
+        """
+        recycle_price = 100
+        return recycle_price
+
+    def recycle_product(self, new_owner_id):
+        """
+        """
+        self.user_id = new_owner_id  # Update the user ID to the new owner
+
+    def resell_product(self, new_owner_id):
         """
         Simulate selling the phone to a new user or a second-hand store.
         Parameters:
@@ -128,7 +138,6 @@ class Smartphone:
             float: The resell value of the phone.
         """
         self.user_id = new_owner_id  # Update the user ID to the new owner
-        return self.resell_value  # Return the value at which the phone is sold
 
     def __repr__(self):
         return (f"Smartphone(is_new={self.is_new}, "

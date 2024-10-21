@@ -541,17 +541,14 @@ class ABM_CE_PV(Model):
         # Landfilling cost
         landfill_cost = [x + self.transportation_cost_rpr_ldf for x in landfill_cost]
 
-        self.last_incomes = self.generate_consumer_income(self.num_consumers)
-        attitude_purcharse_population = self.calculate_attitude_purchase(self.last_incomes)
+        self.consumer_incomes = self.generate_consumer_income(self.num_consumers)
         # Create agents, G nodes labels are equal to agents' unique_ID
         for node in self.G.nodes():
             ###################### Consumers ######################
-            if node < self.num_consumers: 
+            if node < self.num_consumers:
                 a = Consumers(
                     unique_id=node, # agent ID ~ node ID in the network
                     model=self,     # ABM_Model
-                    income=self.last_incomes[node],
-                    attitude_purchase=attitude_purcharse_population[node],
                     product_growth=product_growth, # [List] piecewise function (ratio)
                     failure_rate_alpha=failure_rate_alpha, # [List] triangular distribution
                     perceived_behavioral_control=perceived_behavioral_control, # [List] costs of each EoL pathway
@@ -597,7 +594,7 @@ class ABM_CE_PV(Model):
                 self.schedule.add(c)
                 self.grid.place_agent(c, node)
                 
-            else: 
+            else:
                 ###################### Refurbishers ######################
                 d = Refurbishers(
                     node, 
@@ -705,7 +702,7 @@ class ABM_CE_PV(Model):
             model_reporters=ABM_CE_model_reporters,
             agent_reporters=ABM_CE_agent_reporters)
     
-    def generate_consumer_income(self, num_consumers, mu=10, sigma=0.6, time_steps=10, growth_rate=0.05):
+    def generate_consumer_income(self, num_consumers, mu=10, sigma=0.6):
         """ Consumer Agent
         Generate income distribution using an accumulative law model.
         Increments follow a log-normal distribution, and the Matthew effect is applied.
@@ -714,51 +711,32 @@ class ABM_CE_PV(Model):
             num_consumers (int): Number of consumers to generate.
             mu (float): Mean of the log-normal distribution for increments.
             sigma (float): Standard deviation of the log-normal distribution for increments.
-            time_steps (int): Number of steps (years) to simulate the accumulation process.
-            growth_rate (float): Growth rate in the accumulation process.
-        
+            
         Returns:
             np.ndarray: Final array of accumulated incomes for the population.
         """
         # Initialize consumers with random initial incomes (log-normal distribution)
         incomes = np.random.lognormal(mu, sigma, num_consumers)
-
-        for t in range(time_steps // 12):
-            increments = np.random.lognormal(mu, sigma, num_consumers)  # Income increments
-            # Matthew effect: allocate increments more likely to wealthier individuals
-            probabilities = incomes / np.sum(incomes)  # Wealthier individuals get larger share
-            incomes += increments * probabilities * growth_rate
-        
         return incomes
-    
-    def calculate_attitude_purchase(incomes):
-        """ Consumer Agent
-        Calculate attitudes based on income distribution.
-        Attitudes are calculated as a weighted sum of the log-normal distribution.
 
-        Parameters:
-            incomes (np.ndarray): Array of accumulated incomes for the population.
-
-        Returns:
-            np.ndarray: Array of calculated attitudes based on the income distribution.
-        """
-        income_min = np.min(incomes)
-        income_max = np.max(incomes)
-        attitudes = (np.log(incomes) - np.log(income_min)) / (np.log(income_max) - np.log(income_min))
-        return attitudes 
-    
     def update_consumer_income(self, mu=10, sigma=0.6, growth_rate=0.05):
+        """
+        Update consumer incomes using a log-normal distribution and Matthew effect.
+
+        Args:
+            mu (float): Mean of the log-normal distribution.
+            sigma (float): Standard deviation of the log-normal distribution.
+            growth_rate (float): Overall income growth rate.
+        """
         increments = np.random.lognormal(mu, sigma, self.num_consumers)  # Income increments
         # Matthew effect: allocate increments more likely to wealthier individuals
-        probabilities = self.last_incomes / np.sum(self.last_incomes)  # Wealthier individuals get larger share
-        incomes = self.last_incomes + growth_rate * increments * probabilities
-        
+        probabilities = self.consumer_incomes / np.sum(self.consumer_incomes)  # Wealthier individuals get larger share
+        new_incomes = self.consumer_incomes + growth_rate * increments * probabilities
         ### consumers update incomes
         for agent in self.schedule.agents:
             if agent.unique_id < self.num_consumers:
-                agent.income = incomes[agent.unique_id]
-        
-        self.last_incomes = incomes
+                agent.income = new_incomes[agent.unique_id]
+        self.consumer_incomes = new_incomes
         
     def shortest_paths(self, target_states, distances_to_target):
         """
@@ -901,19 +879,15 @@ class ABM_CE_PV(Model):
                     count += 1
                 elif condition == "selling" and agent.EoL_pathway == "sell":
                     count += 1
-                elif condition == "recycling" and \
-                        agent.EoL_pathway == "recycle":
+                elif condition == "recycling" and agent.EoL_pathway == "recycle":
                     count += 1
-                elif condition == "landfilling" and \
-                        agent.EoL_pathway == "landfill":
+                elif condition == "landfilling" and agent.EoL_pathway == "landfill":
                     count += 1
                 elif condition == "hoarding" and agent.EoL_pathway == "hoard":
                     count += 1
-                elif condition == "buy_new" and \
-                        agent.purchase_choice == "new":
+                elif condition == "buy_new" and agent.purchase_choice == "new":
                     count += 1
-                elif condition == "buy_used" and \
-                        agent.purchase_choice == "used":
+                elif condition == "buy_used" and agent.purchase_choice == "used":
                     count += 1
                     model.consumer_used_product += 1
                 elif condition == "buy_certified" and \
@@ -1087,11 +1061,11 @@ class ABM_CE_PV(Model):
             self.average_mass_per_function_model(self.copy_total_number_product)
         # Collect data
         self.datacollector.collect(self)
-        
+    
         # Refers to agent step function
         self.update_dynamic_lifetime()
-        
+    
         self.average_price_per_function_model()
-        
+    
         self.schedule.step() # 更新income放在schedule里面？
         self.clock = self.clock + 1
