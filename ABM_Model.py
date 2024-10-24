@@ -25,23 +25,6 @@ import math
 
 class ABM_CE_PV(Model):
     """
-    Intro:
-    The agent-based simulations of the circular economy (ABSiCE) model is an
-    agent-based model based on various work (e.g., Tong et al. 2018
-    and Ghali et al. 2017, IRENA-IEA 2016...). This instance of the model
-    simulate the implementation of circular economy (CE) strategies.
-
-    Purpose:
-    ABSiCE aims at simulating the adoption of various various CE strategies.
-    More specifically, the model enables exploring the effect of various policy
-    or techno-economic factors on the adoption of the CE strategies by a
-    system's actors. (Default values are for the case study of the photovoltaic
-    (PV) industry, functional unit = Wp).
-
-    How to use it:
-    Change the model's attributes' values if needed in the ABM_CE_PV_BatchRun
-    or ABM_CE_PV_MultipleRun files and run the model from either of those
-    files.
 
     Attributes:
         seed (to fix random numbers), (default=None). Modeler's choice.
@@ -208,9 +191,6 @@ class ABM_CE_PV(Model):
                  seed=None,
                  calibration_n_sensitivity=1,
                  calibration_n_sensitivity_2=1,
-                 calibration_n_sensitivity_3=1,
-                 calibration_n_sensitivity_4=1,
-                 calibration_n_sensitivity_5=1,
                  num_consumers=1000,
                  consumers_node_degree=10,
                  consumers_network_type="small-world",
@@ -344,15 +324,9 @@ class ABM_CE_PV(Model):
         self.seed = seed
         att_distrib_param_eol[0] = calibration_n_sensitivity
         att_distrib_param_reuse[0] = calibration_n_sensitivity_2
-        #original_recycling_cost = [x * calibration_n_sensitivity_3 for x in
-         #                          original_recycling_cost]
-        #landfill_cost = [x * calibration_n_sensitivity_4 for x in
-         #                landfill_cost]
-        # att_distrib_param_eol[1] = att_distrib_param_eol[1] * \
-        #   calibration_n_sensitivity_4
-        # w_sn_eol = w_sn_eol * calibration_n_sensitivity_5
         np.random.seed(self.seed)
         random.seed(self.seed)
+
         self.num_consumers = num_consumers
         self.consumers_node_degree = consumers_node_degree   
         self.consumers_network_type = consumers_network_type 
@@ -413,8 +387,7 @@ class ABM_CE_PV(Model):
         self.trust_threshold = trust_threshold
         self.knowledge_threshold = knowledge_threshold
         self.willingness_threshold = willingness_threshold
-        self.willingness = np.asmatrix(np.zeros((self.num_prod_n_recyc,
-                                                self.num_prod_n_recyc)))
+        self.willingness = np.asmatrix(np.zeros((self.num_prod_n_recyc, self.num_prod_n_recyc)))
         self.product_mass_fractions = product_mass_fractions
         self.material_waste_ratio = material_waste_ratio
         self.established_scd_mkt = established_scd_mkt
@@ -540,8 +513,11 @@ class ABM_CE_PV(Model):
             x + self.transportation_cost_rpr_ldf for x in original_repairing_cost]
         # Landfilling cost
         landfill_cost = [x + self.transportation_cost_rpr_ldf for x in landfill_cost]
-
+        
+        # Generate consumer incomes
         self.consumer_incomes = self.generate_consumer_income(self.num_consumers)
+        # Generate consumer attitude to purchase
+        self.consumer_attitude_purchase = np.random.uniform(0.05, 0.95, self.num_consumers)
         # Create agents, G nodes labels are equal to agents' unique_ID
         for node in self.G.nodes():
             ###################### Consumers ######################
@@ -719,7 +695,7 @@ class ABM_CE_PV(Model):
         incomes = np.random.lognormal(mu, sigma, num_consumers)
         return incomes
 
-    def update_consumer_income(self, mu=10, sigma=0.6, growth_rate=0.05):
+    def update_consumer_income(self, mu=8, sigma=0.6, growth_rate=0.05):
         """
         Update consumer incomes using a log-normal distribution and Matthew effect.
 
