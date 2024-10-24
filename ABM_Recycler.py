@@ -17,7 +17,6 @@ class Recyclers(Agent):
             et al 2018 and European Commission (2015).
         recycling_learning_shape_factor, (default=-0.39). From Qiu & Suh 2019.
         social_influencability_boundaries (from Ghali et al. 2017)
-
     """
 
     def __init__(self, unique_id, model, original_recycling_cost,
@@ -28,8 +27,8 @@ class Recyclers(Agent):
         """
         super().__init__(unique_id, model)
         self.original_recycling_cost = np.random.triangular(
-            original_recycling_cost[0], original_recycling_cost[2],
-            original_recycling_cost[1])
+            original_recycling_cost[0], original_recycling_cost[2], original_recycling_cost[1])
+        
         self.original_fraction_recycled_waste = init_eol_rate["recycle"]
         self.recycling_learning_shape_factor = recycling_learning_shape_factor
         self.recycling_cost = self.original_recycling_cost
@@ -56,7 +55,7 @@ class Recyclers(Agent):
         self.knowledge_learning = np.random.random()
         self.knowledge_t = self.knowledge
         self.symbiosis = False
-        self.agent_i = self.unique_id - self.model.num_consumers
+        self.agent_k = self.unique_id - self.model.num_consumers
         self.recycler_costs = 0
 
     def update_transport_recycling_costs(self):
@@ -154,7 +153,7 @@ class Recyclers(Agent):
         for agent in self.model.grid.get_cell_list_contents(neighbors_nodes):
             self.social_interactions = np.random.random()
             agent_j = agent.unique_id - self.model.num_consumers
-            if self.model.trust_prod[self.agent_i, agent_j] >= \
+            if self.model.trust_prod[self.agent_k, agent_j] >= \
                     self.model.trust_threshold:
                 knowledge_neighbors += self.social_interactions * (
                         agent.knowledge - self.knowledge)

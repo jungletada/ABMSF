@@ -22,8 +22,7 @@ def distribute_attitude_level(a, b, loc, scale):
 
 class Consumer(Agent):
     def __init__(self, unique_id, model,
-                 max_time_hoard=12 * 5,
-                 ):
+                 max_time_hoard=12 * 5,):
         """
         Initialize a Consumer agent.
 
@@ -181,13 +180,8 @@ class Consumer(Agent):
             max_eol = max(abs(i) for i in pbc_eol.values())
             return {key: -1 * value / max_eol * weight_pbc[key] for key, value in pbc_eol.items()}
     
-    def tpb_decision(self, 
-                     decision, 
-                     weight_att, 
-                     weight_sn, 
-                     weight_pbc, 
-                     pbc_costs, 
-                     att_level_reuse):
+    def tpb_decision(self, decision, weight_att, weight_sn, weight_pbc, 
+                     pbc_costs, att_level_reuse):
         """
         Select the decision with highest behavioral intention following the
         Theory of `Planned Bahevior` (TPB). `Behavioral intention` is a function
@@ -216,10 +210,11 @@ class Consumer(Agent):
             self.behavior_intention[choice] = pbc_values[choice] + sn_values[choice] + att_values[choice]
 
         self.pathway_choice = max(self.behavior_intention, key=self.behavior_intention.get)
+        
+        # If hoarding time >= max_time_hoard, then choose to resell, recycle or landfill.
         if self.pathway_choice == "hoard" and self.smartphone.time_held >= self.max_time_hoard: # exceed max_time_hoard
-            # Choose the second biggest value in 'self.behavior_intention'
-            sorted_intentions = sorted(self.behavior_intention.items(), key=lambda x: x[1], reverse=True)
-            self.pathway_choice = sorted_intentions[1][0]  # Get the key of the second highest value
+            valid_choices = ["sell", "recycle", "landfill"]
+            return max(valid_choices, key=lambda k: self.behavior_intention[k])
             
         print(f'Consumer {self.unique_id} decides to {self.pathway_choice}.')
   
@@ -264,7 +259,7 @@ class Consumer(Agent):
         """Calculate and set the costs for different end-of-life options."""
         self.repair_cost = self.smartphone.calculate_repair_cost() # repair cost need to be paid by consumer
         self.sell_cost = -self.smartphone.calculate_resell_price() # resell cost is paid by second-hand store
-        self.recycle_cost = -self.smartphone.calculate_repair_cost() # recycle cost is paid by second-hand store
+        self.recycle_cost = -self.smartphone.calculate_recycle_cost() # recycle cost is paid by second-hand store
         self.landfill_cost = 0
         self.hoard_cost = 0
 
@@ -341,6 +336,7 @@ class Consumer(Agent):
             else:
                 self.num_cumulative_purchase_new += 1
             self.use_smartphone()
+        
         else:
             # Step 2.2: Use the smartphone and check EoL decision
             # update 'self.pathway_choice'

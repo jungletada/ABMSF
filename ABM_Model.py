@@ -572,12 +572,12 @@ class ABM_CE_PV(Model):
                 
             elif node < self.num_recyclers + self.num_consumers: 
                 ###################### Recyclers ######################
-                b = Recyclers(node, 
-                              self, 
-                              self.original_recycling_cost,
-                              init_eol_rate,
-                              recycling_learning_shape_factor,
-                              social_influencability_boundaries)
+                b = Recyclers(unique_id=node, 
+                              model=self, 
+                              original_recycling_cost=self.original_recycling_cost,
+                              init_eol_rate=init_eol_rate,
+                              recycling_learning_shape_factor=recycling_learning_shape_factor,
+                              social_influencability_boundaries=social_influencability_boundaries)
                 self.schedule.add(b)
                 self.grid.place_agent(b, node)
                 

@@ -8,7 +8,6 @@ import math
 
 class Smartphone:
     """Represents a smartphone in the agent-based model simulation."""
-
     def __init__(self,
                  is_new,
                  model,
@@ -117,6 +116,16 @@ class Smartphone:
         age_factor = max(0, 1 - 0.05 * self.time_held)  # The longer the time held, the lower the value
         resell_price = self.purchase_price * depreciation_factor * self.performance * age_factor
         return resell_price
+
+    def resell_product(self, new_owner_id):
+        """
+        Simulate selling the phone to a new user or a second-hand store.
+        Parameters:
+            new_owner_id (int/None): The ID of the new user/store that buys the phone.
+        Returns:
+            float: The resell value of the phone.
+        """
+        self.user_id = new_owner_id  # Update the user ID to the new owner
     
     def calculate_recycle_price(self):
         """
@@ -126,16 +135,6 @@ class Smartphone:
 
     def recycle_product(self, new_owner_id):
         """
-        """
-        self.user_id = new_owner_id  # Update the user ID to the new owner
-
-    def resell_product(self, new_owner_id):
-        """
-        Simulate selling the phone to a new user or a second-hand store.
-        Parameters:
-            new_owner_id (int/None): The ID of the new user/store that buys the phone.
-        Returns:
-            float: The resell value of the phone.
         """
         self.user_id = new_owner_id  # Update the user ID to the new owner
 
