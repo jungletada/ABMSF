@@ -15,7 +15,7 @@
 待完成：
 - ABM_Manufacturer.py
 - ABM_Recycler.py
-- ABM_Refurbisher.py
+- ABM_SecHandStore.py
 
 ## ToDo
 1. Agents decision tree
