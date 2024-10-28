@@ -19,181 +19,48 @@ class Recyclers(Agent):
         social_influencability_boundaries (from Ghali et al. 2017)
     """
 
-    def __init__(self, unique_id, model, original_recycling_cost,
-                 init_eol_rate, recycling_learning_shape_factor,
-                 social_influencability_boundaries):
+    def __init__(self,
+                 unique_id,
+                 model,
+                 material_weights={'metals':0.45, 'glass':0.32, 'Plastics':0.17, 'Other':0.06},
+                 virgin_material_price={'metals':1000, 'glass':500, 'Plastics':200, 'Other':350},
+                 quality_factor={'metals':0.7, 'glass':0.5, 'Plastics':0.5, 'Other':0.5},
+                 recycle_waste_rate={'metals':0.7, 'glass':0.5, 'Plastics':0.5, 'Other':0.5},
+                 ):
         """
         Creation of new recycler agent
         """
         super().__init__(unique_id, model)
-        self.original_recycling_cost = np.random.triangular(
-            original_recycling_cost[0], original_recycling_cost[2], original_recycling_cost[1])
+        self.recyclering_cost = 0
+        self.recycle_number_now = 0
+        self.cumulative_recycle_number = 0
+        self.recycle_waste = 0
+
+        self.material_weights = material_weights
+        self.virgin_material_price = virgin_material_price
+        self.quality_factor = quality_factor
+        self.recycle_waste_rate = recycle_waste_rate
         
-        self.original_fraction_recycled_waste = init_eol_rate["recycle"]
-        self.recycling_learning_shape_factor = recycling_learning_shape_factor
-        self.recycling_cost = self.original_recycling_cost
-        self.init_recycling_cost = self.original_recycling_cost
-        self.recycler_total_volume = 0
-        self.recycling_volume = 0
-        self.repairable_volume = 0
-        self.total_repairable_volume = 0
-        #  Original recycling volume is based on previous years EoL volume
-        # (from 2000 to 2019)
-        original_recycled_volumes = [x / model.num_recyclers * 1E6 for x
-                                     in model.original_num_prod]
-        self.original_recycling_volume = \
-            (1 - self.model.repairability) * \
-            self.original_fraction_recycled_waste * \
-            sum(self.model.waste_generation(self.model.d_product_lifetimes,
-                                            self.model.avg_failure_rate[2],
-                                            original_recycled_volumes))
-        self.social_influencability = np.random.uniform(
-            social_influencability_boundaries[0],
-            social_influencability_boundaries[1])
-        self.knowledge = np.random.random()
-        self.social_interactions = np.random.random()
-        self.knowledge_learning = np.random.random()
-        self.knowledge_t = self.knowledge
-        self.symbiosis = False
-        self.agent_k = self.unique_id - self.model.num_consumers
-        self.recycler_costs = 0
+        self.recycled_material_price={}
+        for material in self.virgin_material_price.keys():
+            self.recycled_material_price[material] = \
+                self.quality_factor[material] * self.virgin_material_price[material]
+            
+    def update_recycle_numer(self):
+        self.recycle_number_now = 0
 
-    def update_transport_recycling_costs(self):
-        """
-        Update transportation costs according to the (evolving) mass of waste.
-        Here, an average distance between all origins and targets is assumed.
-        """
-        self.recycling_cost = \
-            self.recycling_cost + \
-            (self.model.dynamic_product_average_wght -
-             self.model.product_average_wght) * \
-            self.model.transportation_cost / 1E3 * \
-            self.model.mn_mx_av_distance_to_recycler[2]
+    def recycle_from_consumer(self, consumer_id):
+        self.recycle_number_now += 1
 
-    def update_recycled_waste(self):
-        """
-        Update consumers' amount of recycled waste.
-        """
-        if self.unique_id == self.model.num_consumers:
-            for agent in self.model.schedule.agents:
-                if agent.unique_id < self.model.num_consumers:
-                    agent.update_yearly_recycled_waste(False)
-
-    def triage(self):
-        """
-        Evaluate amount of products that can be refurbished
-        """
-        self.recycler_total_volume = 0
-        self.recycling_volume = 0
-        self.repairable_volume = 0
-        self.total_repairable_volume = 0
-        tot_waste_sold = 0
-        new_installed_capacity = 0
-        for agent in self.model.schedule.agents:
-            if agent.unique_id < self.model.num_consumers and \
-                    agent.EoL_pathway == "sell":
-                tot_waste_sold += agent.number_product_EoL
-            if agent.unique_id < self.model.num_consumers and \
-                    agent.purchase_choice == "used":
-                new_installed_capacity += agent.number_product[-1]
-        used_vol_purchased = self.model.consumer_used_product \
-            / self.model.num_consumers * new_installed_capacity
-        tot_waste_sold += self.model.yearly_repaired_waste
-        if tot_waste_sold < used_vol_purchased:
-            for agent in self.model.schedule.agents:
-                if agent.unique_id < self.model.num_consumers and \
-                        agent.recycling_facility_id == self.unique_id:
-                    self.recycler_total_volume += agent.yearly_recycled_waste
-                    if self.model.yearly_repaired_waste < \
-                            self.model.repairability * self.model.total_waste:
-                        self.recycling_volume = \
-                            (1 - self.model.repairability) * \
-                            self.recycler_total_volume
-                        self.repairable_volume = self.recycler_total_volume - \
-                            self.recycling_volume
-                    else:
-                        self.recycling_volume = self.recycler_total_volume
-                        self.repairable_volume = 0
-        else:
-            for agent in self.model.schedule.agents:
-                if agent.unique_id < self.model.num_consumers and \
-                        agent.recycling_facility_id == self.unique_id:
-                    self.recycler_total_volume += agent.yearly_recycled_waste
-                    self.recycling_volume = self.recycler_total_volume
-                    self.repairable_volume = 0
-        self.model.recycler_repairable_waste += self.repairable_volume
-        self.total_repairable_volume += self.repairable_volume
-        self.model.yearly_repaired_waste += self.repairable_volume
-
-    def learning_curve_function(self, original_volume, volume, original_cost,
-                                shape_factor):
-        """
-        Account for the learning effect: recyclers and refurbishers improve
-        their recycling and repairing processes respectively
-        """
-        if volume > 0:
-            potential_recycling_cost = original_cost * \
-                                       (volume / original_volume) ** \
-                                       shape_factor
-            if potential_recycling_cost < original_cost:
-                return potential_recycling_cost
-            else:
-                return original_cost
-        return original_cost
-
-    def update_recyclers_knowledge(self):
-        """
-        Update knowledge of agents about industrial symbiosis. Mathematical
-        model adapted from Ghali et al. 2017.
-        """
-        self.knowledge_learning = np.random.random()
-        knowledge_neighbors = 0
-        neighbors_nodes = self.model.grid.get_neighbors(self.pos,
-                                                        include_center=False)
-        for agent in self.model.grid.get_cell_list_contents(neighbors_nodes):
-            self.social_interactions = np.random.random()
-            agent_j = agent.unique_id - self.model.num_consumers
-            if self.model.trust_prod[self.agent_k, agent_j] >= \
-                    self.model.trust_threshold:
-                knowledge_neighbors += self.social_interactions * (
-                        agent.knowledge - self.knowledge)
-        self.knowledge_t = self.knowledge
-        self.knowledge += self.social_influencability * knowledge_neighbors + \
-                          self.knowledge_learning
-        if self.knowledge < 0:
-            self.knowledge = 0
-        if self.knowledge > 1:
-            self.knowledge = 1
-
-    def compute_recycler_costs(self):
-        """
-        Compute societal costs of recyclers. Only account for the material
-        recovered and the costs of recycling processes. Sales revenue of
-        repairable products are not included.
-        """
-        revenue = 0
-        for agent in self.model.schedule.agents:
-            if self.model.num_consumers + self.model.num_recyclers <= \
-                    agent.unique_id < self.model.num_consumers + \
-                    self.model.num_prod_n_recyc:
-                if not np.isnan(agent.yearly_recycled_material_volume) and \
-                        not np.isnan(agent.recycled_mat_price):
-                    revenue += agent.yearly_recycled_material_volume * \
-                               agent.recycled_mat_price
-        revenue /= self.model.num_recyclers
-        self.recycler_costs += \
-            ((self.recycling_volume + self.model.installer_recycled_amount) *
-             self.recycling_cost - revenue)
+    def sell_to_manufacturer(self, manufacturer_id):
+        pass
+   
+    def update_recycle_waste(self, mce):
+        for material in self.virgin_material_price.keys():
+            self.recycle_waste += self.recycle_waste_rate[material] * mce * self.material_weights[material]
 
     def step(self):
         """
         Evolution of agent at each step
         """
-        self.update_recycled_waste()
-        self.triage()
-        self.recycling_cost = self.learning_curve_function(
-            self.original_recycling_volume, self.recycling_volume,
-            self.original_recycling_cost,
-            self.recycling_learning_shape_factor)
-        self.update_transport_recycling_costs()
-        self.update_recyclers_knowledge()
+        pass

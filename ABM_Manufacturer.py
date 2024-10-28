@@ -15,45 +15,35 @@ from ABM_Smartphone import Smartphone
 
 
 class Manufacturer(Agent):
-    """
-    Attributes:
-        unique_id: agent #, also relate to the node # in the network
-        model (see ABM_Model)
-        second_market_prices.
-        virgin_market_prices.
-    """
-
     def __init__(self,
                  unique_id,
                  model,
                  material_weights={'metals':0.45, 'glass':0.32, 'Plastics':0.17, 'Other':0.06},
                  virgin_material_price={'metals':1000, 'glass':500, 'Plastics':200, 'Other':350},
                  recycled_material_price={'metals':1000, 'glass':500, 'Plastics':200, 'Other':350},
-                 recycled_percentages={'metals':0.5, 'glass':0.1, 'Plastics':0.1, 'Other':0.3},
-                 demand_limits={'metals':0.5, 'glass':0.1, 'Plastics':0.1, 'Other':0.3},
+                 recycled_material_percentages={'metals':0.5, 'glass':0.1, 'Plastics':0.1, 'Other':0.3},
+                 material_demand_limits={'metals':0.5, 'glass':0.1, 'Plastics':0.1, 'Other':0.3},
                  ):
-        """
-        Creation of new producer agent
-        """
         super().__init__(unique_id, model)
 
         self.material_weights = material_weights
         self.virgin_material_price = virgin_material_price
         self.recycled_material_price = recycled_material_price
-        self.recycled_percentages = recycled_percentages
-        self.demand_limits = demand_limits
+        self.recycled_percentages = recycled_material_percentages
+        self.demand_limits = material_demand_limits
         self.stability_goal = 0.4
 
         # For pricing strategy
-        self.product_price = None
-        self.profit_margin = None
-        self.demand_elasticity = None
-        self.financial_incentive = None
+        self.product_price = 0
+        self.profit_margin = 0.3
+        self.demand_elasticity = 0.2
+        self.financial_incentive = 0
 
         self.cumulative_sales = 0
         self.income = 0
+        self.production_cost = 0
 
-    def calculate_production_cost(self): # TBD
+    def calculate_production_cost(self):
         """
         Calculate the production cost based on the use of recycled materials.
 
@@ -61,23 +51,18 @@ class Manufacturer(Agent):
             float: Total production cost considering the recycled materials and constraints.
         """
         production_cost = 0
-        total_recycled_weight = 0
-        total_weight = sum(self.material_weights.values())
+        recycled_weight = 0
         # Calculate production cost and ensure constraints are met
         for material in self.material_prices.keys():
-            # Ensure the recycled percentage does not exceed the demand limit
-            recycled_percentage = min(self.recycled_percentages[material], self.demand_limits[material])
             # Calculate cost for this material
-            recycled_material_cost = self.recycled_material_price * recycled_percentage * self.material_weights[material]
-            virgin_material_cost = self.virgin_material_price * (1 - recycled_percentage) * self.material_weights[material]
+            recycled_material_cost = self.recycled_material_price[material] * self.recycled_percentages[material] * self.material_weights[material]
+            virgin_material_cost = self.virgin_material_price[material] * (1 - self.recycled_percentages[material]) * self.material_weights[material]
             production_cost = recycled_material_cost + virgin_material_cost
-            # Accumulate the recycled weight for stability/regulatory goals
-            total_recycled_weight += recycled_percentage * self.material_weights[material]
-
-        # Check the stability goal constraint
-        if total_recycled_weight < self.stability_goal * total_weight:
-            raise ValueError("Stability goal for recycled materials not met.")
+            recycled_weight += self.recycled_percentages[material] * self.material_weights[material]
+        
+        self.financial_incentive = self.sigma_incentive * recycled_weight
         self.production_cost = production_cost
+        
         return self.production_cost
     
     def set_product_price(self):

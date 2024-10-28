@@ -52,7 +52,8 @@ class Producers(Agent):
 
     """
 
-    def __init__(self, unique_id, model, scd_mat_prices, virgin_mat_prices,
+    def __init__(self, unique_id, model, 
+                 scd_mat_prices, virgin_mat_prices,
                  social_influencability_boundaries,
                  self_confidence_boundaries):
         """
@@ -146,40 +147,36 @@ class Producers(Agent):
                               self.model.social_event_boundaries[1],
                               (self.model.num_prod_n_recyc,
                                self.model.num_prod_n_recyc)))
-        for agent in self.model.schedule.agents:
-            if self.model.num_consumers <= agent.unique_id < \
-                    self.model.num_consumers + self.model.num_prod_n_recyc:
+        for agent in self.model.schedule.agents: # agent: Producers
+            if self.model.num_consumers <= agent.unique_id < self.model.num_consumers + self.model.num_prod_n_recyc:
                 agent_j = agent.unique_id - self.model.num_consumers
+                
                 common_neighbors = list(
-                    nx.common_neighbors(self.model.G, self.unique_id,
-                                        agent.unique_id))
+                    nx.common_neighbors(self.model.G, self.unique_id, agent.unique_id))
+                
                 if common_neighbors:
-                    trust_neighbors = \
-                        [self.model.trust_prod[self.agent_i, i -
-                                               self.model.num_consumers]
+                    trust_neighbors = [self.model.trust_prod[self.agent_i, i - self.model.num_consumers]
                          for i in common_neighbors]
                     avg_trust_neighbors = self.social_influencability * (
                             sum(trust_neighbors) / len(trust_neighbors) -
                             self.trust_history[self.agent_i, agent_j])
-                # Slight modification from Ghali et al.: if no common contact
-                # there is no element for reputation
+                
                 else:
                     avg_trust_neighbors = 0
                 trust_ij = self.trust_history[self.agent_i, agent_j] + \
                     avg_trust_neighbors + random_social_event[
                                self.agent_i, agent_j]
-                if trust_ij < -1:
-                    trust_ij = -1
-                if trust_ij > 1:
-                    trust_ij = 1
+                
+                trust_ij = max(min(trust_ij, 1), -1)
+                
                 self.model.trust_prod[self.agent_i, agent_j] = trust_ij
         self.trust_history = ((self.trust_history * (self.model.clock + 1)) +
                               self.model.trust_prod) / (self.model.clock + 2)
 
     def update_knowledge(self):
         """
-        Update knowledge of agents about industrial symbiosis. Mathematical
-        model adapted from Ghali et al. 2017.
+        Update knowledge of agents about industrial symbiosis. 
+        Mathematical model adapted from Ghali et al. 2017.
         """
         self.knowledge_learning = np.random.random()
         knowledge_neighbors = 0
@@ -205,16 +202,16 @@ class Producers(Agent):
         Update agents' acceptance of industrial symbiosis. Mathematical model
         adapted from Ghali et al. 2017.
         """
-        neighbors_nodes = self.model.grid.get_neighbors(self.pos,
-                                                        include_center=False)
+        neighbors_nodes = self.model.grid.get_neighbors(self.pos, include_center=False)
         neighbors_influence = \
-            len([agent for agent in self.model.grid.get_cell_list_contents(
-                neighbors_nodes) if agent.symbiosis]) / \
-            len([agent for agent in self.model.grid.get_cell_list_contents(
-                neighbors_nodes)])
+            len([agent for agent in self.model.grid.get_cell_list_contents(neighbors_nodes) if agent.symbiosis]) / \
+            len([agent for agent in self.model.grid.get_cell_list_contents(neighbors_nodes)])
+        
         self.acceptance += self.social_influencability * neighbors_influence \
             + self.self_confidence * (self.knowledge - self.knowledge_t)
+        
         self.knowledge_t = self.knowledge
+
         if self.acceptance < 0:
             self.acceptance = 0
         if self.acceptance > 1:
@@ -249,8 +246,7 @@ class Producers(Agent):
         for agent in self.model.schedule.agents:
             if agent.unique_id < self.model.num_consumers:
                 tot_recycled += agent.yearly_recycled_waste
-            if self.model.num_consumers <= agent.unique_id < \
-                    self.model.num_consumers + self.model.num_recyclers:
+            if self.model.num_consumers <= agent.unique_id < self.model.num_consumers + self.model.num_recyclers:
                 amount_recyclers += agent.recycling_volume
         self.model.installer_recycled_amount = \
             (tot_recycled - amount_recyclers) / self.model.num_prod_n_recyc
