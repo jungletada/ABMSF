@@ -40,8 +40,8 @@ class Consumer(Agent):
     """
     def __init__(
             self,
-            unique_id,
             model,
+            unique_id,
             max_time_hoard=60):
         """
         Initialize a Consumer agent.
@@ -52,8 +52,8 @@ class Consumer(Agent):
             w_SN (float): Weight for subjective norm in the decision-making model.
             w_PBC (float): Weight for perceived behavioral control.
         """
-        super().__init__(unique_id, model)
-
+        super().__init__(model)
+        self.unique_id = unique_id
         self.smartphone = None  # Consumer starts with no smartphone
         # To buy or not
         self.decision = None
@@ -63,11 +63,11 @@ class Consumer(Agent):
         # Extending the unified theory of acceptance and use of technology
         self.to_purchase = False
 
-        self.w_att_buy_or_not = 0.45
-        self.w_sn_buy_or_not = 0.20
-        self.w_pbc_buy_or_not = 0.35
+        # self.w_att_buy_or_not = 0.45
+        # self.w_sn_buy_or_not = 0.20
+        # self.w_pbc_buy_or_not = 0.35
 
-        self.i_mu = 8
+        self.i_mu = 9
         self.i_sigma = 0.6
         self.income = np.random.lognormal(self.i_mu, self.i_sigma, 1)
         self.repair_cost = 0
@@ -101,7 +101,7 @@ class Consumer(Agent):
         # Get ID for recyclers and manufacturer
         self.recycling_facility_id = model.num_consumers + random.randrange(model.num_recyclers)
         self.refurbisher_id = model.num_consumers + model.num_prod_n_recyc + \
-            random.randrange(model.num_refurbishers)
+            random.randrange(model.num_sechdstores)
 
     def update_income(self, growth_rate=0.05):
         """
@@ -130,14 +130,15 @@ class Consumer(Agent):
                                      weighted by the corresponding attitude weight.
         """
         att_level_ratios = {}
-        for i, pathway in enumerate(self.eol_pathway_choices):
-            if decision == "eol_pathway":
+        if decision == "eol_pathway":
+            for i, pathway in enumerate(self.eol_pathway_choices):
                 if pathway in ["repair", "resell", "recycle"]:
                     att_level_ratios[pathway] = att_level_reuse * weight_att[pathway]
                 else:
                     att_level_ratios[pathway] = (1 - att_level_reuse) * weight_att[pathway]
-            
-            elif decision == "purchase_choice":
+        
+        elif decision == "purchase_choice":
+            for i, pathway in enumerate(self.purchase_choices):
                 if self.purchase_choices[i] == "used":
                     att_level_ratios[pathway] = att_level_reuse * weight_att[pathway]
                 else:
@@ -155,8 +156,8 @@ class Consumer(Agent):
                 weighted by the corresponding subjective norm weight.
         Calculate subjective norm (peer pressure) component of TPB rule
         """
-        neighbors_nodes = self.model.grid.get_neighbors(self.pos, include_center=False)
-        neighbor_agents = list(self.model.grid.get_cell_list_contents(neighbors_nodes))
+        neighbor_agents = self.model.grid.get_neighbors(self.pos, include_center=False)
+        # neighbor_agents = list(self.model.grid.get_cell_list_contents(neighbors_nodes))
         proportion_sn = {}
         
         if decision == "eol_pathway":
@@ -236,8 +237,12 @@ class Consumer(Agent):
         if self.pathway_choice == "hoard" and self.smartphone.time_held >= self.max_time_hoard: # exceed max_time_hoard
             valid_choices = ["resell", "recycle", "landfill"]
             return max(valid_choices, key=lambda k: self.behavior_intention[k])
-            
-        print(f'Consumer {self.unique_id} decides to {self.pathway_choice}.')
+        
+        #### Print function
+        if decision == "eol_pathway":    
+            print(f'Consumer {self.unique_id} decides to {self.pathway_choice} the smartphone.')
+        else:
+            print(f'Consumer {self.unique_id} decides to purchase a {self.pathway_choice} smartphone.')
 
     def decide_to_purchase_or_not(self):
         """
@@ -304,8 +309,7 @@ class Consumer(Agent):
         if market == "new":
             self.smartphone = Smartphone(is_new=True, model=self.model, performance=1)
         elif market == "used":
-            self.smartphone = Smartphone(is_new=False, model=self.model, performance=1)
-        print(f"Consumer {self.consumer_id} purchased a {market} smartphone.")
+            self.smartphone = Smartphone(is_new=False, model=self.model, performance=0.95)
 
     def resell_smartphone(self, new_owner_id):
         """
@@ -344,10 +348,14 @@ class Consumer(Agent):
         """
         Main simulation step for the consumer.
         """
-        if self.model.clock % 12 == 0 and self.model.clock != 0:
+        # print(f"Consumer {self.unique_id} doing.")
+        if self.model.steps % 12 == 0 and self.model.steps != 0:
             self.update_income()
+            # print(f"Update Consumer {self.unique_id} with income {self.income}")
+        
         # Step 1: Check if the consumer needs a new smartphone and update 'self.to_purchase'
         self.decide_to_purchase_or_not()
+        # print(f"Consumer {self.unique_id} to purchase: {self.to_purchase}")
         
         if self.to_purchase:
             # Step 2.1: Decide whether to purchase new or used smartphone
@@ -366,29 +374,29 @@ class Consumer(Agent):
                 self.num_cumulative_purchase_new += 1
             self.use_smartphone()
         
-        else:
-            # Step 2.2: Use the smartphone and check EoL decision
-            # update 'self.pathway_choice'
-            self.tpb_decision(
-                decision='eol_pathway',
-                weight_att=self.weight_att_eol,
-                weight_sn=self.weight_sn_eol,
-                weight_pbc=self.weight_pbc_eol,
-                pbc_costs=self.pbc_costs_eol,
-                att_level_reuse=0.2)
+        # else:
+        #     # Step 2.2: Use the smartphone and check EoL decision
+        #     # update 'self.pathway_choice'
+        #     self.tpb_decision(
+        #         decision='eol_pathway',
+        #         weight_att=self.weight_att_eol,
+        #         weight_sn=self.weight_sn_eol,
+        #         weight_pbc=self.weight_pbc_eol,
+        #         pbc_costs=self.pbc_costs_eol,
+        #         att_level_reuse=0.2)
             
-            if self.pathway_choice == "hoard":
-                # update the time held and performance
-                self.use_smartphone()
+        #     if self.pathway_choice == "hoard":
+        #         # update the time held and performance
+        #         self.use_smartphone()
 
-            elif self.pathway_choice == "resell":
-                self.resell_smartphone(new_owner_id=None)
+        #     elif self.pathway_choice == "resell":
+        #         self.resell_smartphone(new_owner_id=None)
 
-            elif self.pathway_choice == "recycle":
-                self.recycle_smartphone(new_owner_id=None)
+        #     elif self.pathway_choice == "recycle":
+        #         self.recycle_smartphone(new_owner_id=None)
 
-            elif self.pathway_choice == "landfill":
-                self.landfill_smartphone()
+        #     elif self.pathway_choice == "landfill":
+        #         self.landfill_smartphone()
                 
-            elif self.pathway_choice == "repair":
-                self.repair_smartphone()
+        #     elif self.pathway_choice == "repair":
+        #         self.repair_smartphone()

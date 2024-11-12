@@ -5,7 +5,7 @@ import operator
 from scipy.stats import truncnorm
 
 
-class SecondHandStores(Agent):
+class SecondHandStore(Agent):
     """
     A refurbisher which repairs modules (and eventually discard them), improve
     its processes and act as an intermediary between other actors.
@@ -30,12 +30,13 @@ class SecondHandStores(Agent):
 
     """
 
-    def __init__(self, unique_id, model, ):
-        super().__init__(unique_id, model)
+    def __init__(self, model, unique_id):
+        super().__init__(model)
+        self.unique_id = unique_id
         self.stocks = []
         self.max_time_held = 36
 
-    def bought_used_product_from_consumer(self, smartphone):
+    def trade_with_consumer_buy(self, smartphone):
         smartphone.repair_product()
         smartphone.time_held = 0
         self.stocks.append(smartphone)
@@ -45,8 +46,9 @@ class SecondHandStores(Agent):
         """
         smartphone.calculate_used_market_price()
     
-    def sell_used_product_to_cunsumer(self):
-        """"""
+    def trade_with_cunsumer_resell(self):
+        """
+        """
         pass
     
     def step(self):
@@ -54,5 +56,6 @@ class SecondHandStores(Agent):
             smartphone.update_time_held()
             if smartphone.time_held >= self.max_time_held:
                 # random pick a recycler
-                smartphone.recycle_product(new_owner_id)
+                # smartphone.recycle_product(new_owner_id)
                 self.stocks.remove(smartphone)
+        # print(f"SecondHandStore {self.unique_id} doing.")

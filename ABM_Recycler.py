@@ -1,8 +1,9 @@
 from mesa import Agent
+from ABM_Smartphone import Smartphone
 import numpy as np
 
 
-class Recyclers(Agent):
+class Recycler(Agent):
     """
     A recycler which sells recycled materials and improve its processes.
 
@@ -21,8 +22,8 @@ class Recyclers(Agent):
 
     def __init__(
             self,
-            unique_id,
             model,
+            unique_id,
             material_weights={'metals':0.45, 'glass':0.32, 'Plastics':0.17, 'Other':0.06},
             virgin_material_price={'metals':1000, 'glass':500, 'Plastics':200, 'Other':350},
             quality_factor={'metals':0.7, 'glass':0.5, 'Plastics':0.5, 'Other':0.5},
@@ -30,7 +31,8 @@ class Recyclers(Agent):
         """
         Creation of new recycler agent
         """
-        super().__init__(unique_id, model)
+        super().__init__(model)
+        self.unique_id = unique_id
         self.recyclering_cost = 0
         self.recycle_number_now = 0
         self.cumulative_recycle_number = 0
@@ -46,7 +48,7 @@ class Recyclers(Agent):
             self.recycled_material_price[material] = \
                 self.quality_factor[material] * self.virgin_material_price[material]
 
-    def recycle_product_from_consumer(self, smartphone):
+    def trade_with_consumer_recycle(self, smartphone: Smartphone):
         """
 
         """
@@ -66,4 +68,6 @@ class Recyclers(Agent):
         """
         Evolution of agent at each step
         """
-        pass
+        self.update_recycle_waste(mce=0.5)
+        # print(f"Recycler {self.unique_id} recycle waste: {self.recycle_waste}")
+        # print(f"Recycler {self.unique_id} doing.")

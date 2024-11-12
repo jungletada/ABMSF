@@ -6,18 +6,18 @@ import matplotlib.pyplot as plt
 import networkx as nx
 
 from mesa import Model
-from mesa.time import BaseScheduler
+# from mesa import AgentSet
 from mesa.space import NetworkGrid
 from mesa.datacollection import DataCollector
 
 
 from ABM_Consumer import Consumer
-from ABM_CE_RecyclerAgents import Recyclers
-from ABM_CE_RefurbisherAgents import Refurbishers
-from ABM_CE_ProducerAgents import Producers
+from ABM_Recycler import Recycler
+from ABM_SecHandStore import SecondHandStore
+from ABM_Manufacturer import Manufacturer
 
 
-class ABM_MODEL(Model):
+class Smartphone_MODEL(Model):
     """
 
     Attributes:
@@ -189,11 +189,11 @@ class ABM_MODEL(Model):
                  consumers_node_degree=10,
                  consumers_network_type="small-world",
                  rewiring_prob=0.1,
-                 num_recyclers=16,
-                 num_producers=60,
+                 num_recyclers=15,
+                 num_producers=10,
                  prod_n_recyc_node_degree=5,
                  prod_n_recyc_network_type="small-world",
-                 num_sechdstores=15,
+                 num_sechdstores=30,
                  consumers_distribution={"residential": 1, "commercial": 0., "utility": 0.},
                  init_eol_rate={"repair": 0.005, "sell": 0.01, "recycle": 0.1, "landfill": 0.4425, "hoard": 0.4425},
                  init_purchase_rate={"new": 0.9995, "used": 0.0005},
@@ -312,6 +312,7 @@ class ABM_MODEL(Model):
         Initiate model
         """
         # Set up variables
+        super().__init__(seed=seed)
         self.seed = seed
         att_distrib_param_eol[0] = calibration_n_sensitivity
         att_distrib_param_reuse[0] = calibration_n_sensitivity_2
@@ -419,11 +420,12 @@ class ABM_MODEL(Model):
         self.product_growth = product_growth
         self.growth_threshold = growth_threshold
         
-        ###################################################
-        #                                                 #
-        #                  Building graphs                #
-        #                                                 #
-        ###################################################
+        ####################################################
+        #                                                  #
+        #                  Building graphs                 #
+        #                                                  #
+        ####################################################
+        
         # Consumer's network
         self.consumer_network = self.init_network(
             network=self.consumers_network_type,
@@ -445,12 +447,11 @@ class ABM_MODEL(Model):
             node_degree="NaN",
             rewiring_prob=rewiring_prob)
 
-        self.network = nx.disjoint_union(self.consumer_network, self.recycler_network)
-        self.network = nx.disjoint_union(self.network, self.sechdstore_network)
+        #self.network = nx.disjoint_union(self.consumer_network, self.recycler_network)
+        self.network = nx.disjoint_union(
+            nx.disjoint_union(self.consumer_network, self.recycler_network), 
+            self.sechdstore_network)
         self.grid = NetworkGrid(self.network)
-
-        # Defines scheduler
-        self.schedule = BaseScheduler(self)
 
         self.all_states = ['Texas', 'California', 'Montana', 'New Mexico',
                       'Arizona', 'Nevada', 'Colorado', 'Oregon', 'Wyoming',
@@ -502,60 +503,40 @@ class ABM_MODEL(Model):
             x + self.transportation_cost_rpr_ldf for x in original_repairing_cost]
         # Landfilling cost
         landfill_cost = [x + self.transportation_cost_rpr_ldf for x in landfill_cost]
-        
-        # Generate consumer incomes
-        self.consumer_incomes = self.generate_consumer_income(self.num_consumers)
 
+        # self.consumer_agent_set = AgentSet(self)
         # Create agents, G nodes labels are equal to agents' unique_ID
         for node in self.network.nodes():
             #===================== Consumers =====================#
             if node < self.num_consumers:
                 a = Consumer(
-                    unique_id=node, # agent ID ~ node ID in the network
                     model=self,     # ABM_Model
-                ) 
-                
-                self.schedule.add(a)
+                    unique_id=node, # agent ID ~ node ID in the network
+                    ) 
                 self.grid.place_agent(a, node)  # Add the agent to the node
                 
             elif node < self.num_recyclers + self.num_consumers:
                 #===================== Recyclers =====================#
-                b = Recyclers(
+                b = Recycler(
+                    model=self,
                     unique_id=node, 
-                              model=self, 
-                              original_recycling_cost=self.original_recycling_cost,
-                              init_eol_rate=init_eol_rate,
-                              recycling_learning_shape_factor=recycling_learning_shape_factor,
-                              social_influencability_boundaries=social_influencability_boundaries)
-                self.schedule.add(b)
+                    )
                 self.grid.place_agent(b, node)
 
             elif node < self.num_prod_n_recyc + self.num_consumers:
                 #===================== Producers =====================#
-                c = Producers(
-                    node,
-                    self,
-                    scd_mat_prices,
-                    virgin_mat_prices,
-                    social_influencability_boundaries,
-                    self_confidence_boundaries)
-                
-                self.schedule.add(c)
+                c = Manufacturer(
+                    model=self,
+                    unique_id=node, 
+                    )
                 self.grid.place_agent(c, node)
 
             else:
                 #================== Second-hand Store ==================#
-                d = Refurbishers(
-                    node, 
-                    self,
-                    original_repairing_cost,
-                    init_eol_rate,
-                    repairing_learning_shape_factor,
-                    scndhand_mkt_pric_rate,
-                    refurbisher_margin,
-                    max_storage)
-                
-                self.schedule.add(d)
+                d = SecondHandStore(
+                    model=self,
+                    unique_id=node, 
+                    )
                 self.grid.place_agent(d, node)
 
         # Draw initial graph
@@ -563,93 +544,93 @@ class ABM_MODEL(Model):
         # plt.show()
 
         # Defines reporters and set up data collector
-        model_reporters = {
-            "Year": lambda c: self.report_output("year"),
-            "Average weight of waste": lambda c: self.report_output("weight"),
-            "Agents repairing": lambda c: self.count_eol_products("repairing"),
-            "Agents selling": lambda c: self.count_eol_products("selling"),
-            "Agents recycling": lambda c: self.count_eol_products("recycling"),
-            "Agents landfilling": lambda c: self.count_eol_products("landfilling"),
-            "Agents storing": lambda c: self.count_eol_products("hoarding"),
-            "Agents buying new": lambda c: self.count_eol_products("buy_new"),
-            "Agents buying used": lambda c: self.count_eol_products("buy_used"),
-            "Agents buying certified": lambda c: self.count_eol_products("certified"),
-            "Total product": lambda c:self.report_output("product_stock"),
-            "New product": lambda c:self.report_output("product_stock_new"),
-            "Used product": lambda c:self.report_output("product_stock_used"),
-            "New product_mass": lambda c:self.report_output("prod_stock_new_mass"),
-            "Used product_mass": lambda c:self.report_output("prod_stock_used_mass"),
-            "EoL-repaired": lambda c:self.report_output("product_repaired"),
-            "EoL-sold": lambda c: self.report_output("product_sold"),
-            "EoL-recycled": lambda c:self.report_output("product_recycled"),
-            "EoL-landfilled": lambda c:self.report_output("product_landfilled"),
-            "EoL-stored": lambda c:self.report_output("product_hoarded"),
-            "EoL-new repaired weight": lambda c:self.report_output("product_new_repaired"),
-            "EoL-new sold weight": lambda c:self.report_output("product_new_sold"),
-            "EoL-new recycled weight": lambda c:self.report_output("product_new_recycled"),
-            "EoL-new landfilled weight": lambda c:self.report_output("product_new_landfilled"),
-            "EoL-new stored weight": lambda c:self.report_output("product_new_hoarded"),
-            "EoL-used repaired weight": lambda c:self.report_output("product_used_repaired"),
-            "EoL-used sold weight": lambda c:self.report_output("product_used_sold"),
-            "EoL-used recycled weight": lambda c:self.report_output("product_used_recycled"),
-            "EoL-used landfilled weight": lambda c:self.report_output("product_used_landfilled"),
-            "EoL-used stored weight": lambda c:self.report_output("product_used_hoarded"),
-            "Average landfilling cost": lambda c:self.report_output("average_landfill_cost"),
-            "Average storing cost": lambda c:self.report_output("average_hoarding_cost"),
-            "Average recycling cost": lambda c:self.report_output("average_recycling_cost"),
-            "Average repairing cost": lambda c:self.report_output("average_repairing_cost"),
-            "Average selling cost": lambda c:self.report_output("average_second_hand_price"),
-            "Recycled material volume": lambda c:self.report_output("recycled_mat_volume"),
-            "Recycled material value": lambda c:self.report_output("recycled_mat_value"),
-            "Producer costs": lambda c:self.report_output("producer_costs"),
-            "Consumer costs": lambda c:self.report_output("consumer_costs"),
-            "Recycler costs": lambda c:self.report_output("recycler_costs"),
-            "Refurbisher costs": lambda c:self.report_output("refurbisher_costs"),
-            "Refurbisher costs w margins": lambda c:self.report_output("refurbisher_costs_w_margins")}
+        # model_reporters = {
+        #     "Year": lambda c: self.report_output("year"),
+        #     "Average weight of waste": lambda c: self.report_output("weight"),
+        #     "Agents repairing": lambda c: self.count_eol_products("repairing"),
+        #     "Agents selling": lambda c: self.count_eol_products("selling"),
+        #     "Agents recycling": lambda c: self.count_eol_products("recycling"),
+        #     "Agents landfilling": lambda c: self.count_eol_products("landfilling"),
+        #     "Agents storing": lambda c: self.count_eol_products("hoarding"),
+        #     "Agents buying new": lambda c: self.count_eol_products("buy_new"),
+        #     "Agents buying used": lambda c: self.count_eol_products("buy_used"),
+        #     "Agents buying certified": lambda c: self.count_eol_products("certified"),
+        #     "Total product": lambda c:self.report_output("product_stock"),
+        #     "New product": lambda c:self.report_output("product_stock_new"),
+        #     "Used product": lambda c:self.report_output("product_stock_used"),
+        #     "New product_mass": lambda c:self.report_output("prod_stock_new_mass"),
+        #     "Used product_mass": lambda c:self.report_output("prod_stock_used_mass"),
+        #     "EoL-repaired": lambda c:self.report_output("product_repaired"),
+        #     "EoL-sold": lambda c: self.report_output("product_sold"),
+        #     "EoL-recycled": lambda c:self.report_output("product_recycled"),
+        #     "EoL-landfilled": lambda c:self.report_output("product_landfilled"),
+        #     "EoL-stored": lambda c:self.report_output("product_hoarded"),
+        #     "EoL-new repaired weight": lambda c:self.report_output("product_new_repaired"),
+        #     "EoL-new sold weight": lambda c:self.report_output("product_new_sold"),
+        #     "EoL-new recycled weight": lambda c:self.report_output("product_new_recycled"),
+        #     "EoL-new landfilled weight": lambda c:self.report_output("product_new_landfilled"),
+        #     "EoL-new stored weight": lambda c:self.report_output("product_new_hoarded"),
+        #     "EoL-used repaired weight": lambda c:self.report_output("product_used_repaired"),
+        #     "EoL-used sold weight": lambda c:self.report_output("product_used_sold"),
+        #     "EoL-used recycled weight": lambda c:self.report_output("product_used_recycled"),
+        #     "EoL-used landfilled weight": lambda c:self.report_output("product_used_landfilled"),
+        #     "EoL-used stored weight": lambda c:self.report_output("product_used_hoarded"),
+        #     "Average landfilling cost": lambda c:self.report_output("average_landfill_cost"),
+        #     "Average storing cost": lambda c:self.report_output("average_hoarding_cost"),
+        #     "Average recycling cost": lambda c:self.report_output("average_recycling_cost"),
+        #     "Average repairing cost": lambda c:self.report_output("average_repairing_cost"),
+        #     "Average selling cost": lambda c:self.report_output("average_second_hand_price"),
+        #     "Recycled material volume": lambda c:self.report_output("recycled_mat_volume"),
+        #     "Recycled material value": lambda c:self.report_output("recycled_mat_value"),
+        #     "Producer costs": lambda c:self.report_output("producer_costs"),
+        #     "Consumer costs": lambda c:self.report_output("consumer_costs"),
+        #     "Recycler costs": lambda c:self.report_output("recycler_costs"),
+        #     "Refurbisher costs": lambda c:self.report_output("refurbisher_costs"),
+        #     "Refurbisher costs w margins": lambda c:self.report_output("refurbisher_costs_w_margins")}
 
-        agent_reporters = {
-            "Year": 
-                lambda c: self.report_output("year"),
-            "Number_product_repaired":
-                lambda a: getattr(a, "number_product_repaired", None),
-            "Number_product_sold":
-                lambda a: getattr(a, "number_product_sold", None),
-            "Number_product_recycled":
-                lambda a: getattr(a, "number_product_recycled", None),
-            "Number_product_landfilled":
-                lambda a: getattr(a, "number_product_landfilled", None),
-            "Number_product_hoarded":
-                lambda a: getattr(a, "number_product_hoarded", None),
-            "Recycling":
-                lambda a: getattr(a, "EoL_pathway", None),
-            "Landfilling costs":
-                lambda a: getattr(a, "landfill_cost", None),
-            "Storing costs":
-                lambda a: getattr(a, "hoarding_cost", None),
-            "Recycling costs":
-                lambda a: getattr(a, "recycling_cost", None),
-            "Repairing costs":
-                lambda a: getattr(a, "repairing_cost", None),
-            "Selling costs":
-                lambda a: getattr(a, "scd_hand_price", None),
-            "Material produced":
-                lambda a: getattr(a, "material_produced", None),
-            "Recycled volume":
-                lambda a: getattr(a, "recycled_material_volume", None),
-            "Recycled value":
-                lambda a: getattr(a, "recycled_material_value", None),
-            "Producer costs":
-                lambda a: getattr(a, "producer_costs", None),
-            "Consumer costs":
-                lambda a: getattr(a, "consumer_costs", None),
-            "Recycler costs":
-                lambda a: getattr(a, "recycler_costs", None),
-            "Refurbisher costs":
-                lambda a: getattr(a, "refurbisher_costs", None)}
+        # agent_reporters = {
+        #     "Year": 
+        #         lambda c: self.report_output("year"),
+        #     "Number_product_repaired":
+        #         lambda a: getattr(a, "number_product_repaired", None),
+        #     "Number_product_sold":
+        #         lambda a: getattr(a, "number_product_sold", None),
+        #     "Number_product_recycled":
+        #         lambda a: getattr(a, "number_product_recycled", None),
+        #     "Number_product_landfilled":
+        #         lambda a: getattr(a, "number_product_landfilled", None),
+        #     "Number_product_hoarded":
+        #         lambda a: getattr(a, "number_product_hoarded", None),
+        #     "Recycling":
+        #         lambda a: getattr(a, "EoL_pathway", None),
+        #     "Landfilling costs":
+        #         lambda a: getattr(a, "landfill_cost", None),
+        #     "Storing costs":
+        #         lambda a: getattr(a, "hoarding_cost", None),
+        #     "Recycling costs":
+        #         lambda a: getattr(a, "recycling_cost", None),
+        #     "Repairing costs":
+        #         lambda a: getattr(a, "repairing_cost", None),
+        #     "Selling costs":
+        #         lambda a: getattr(a, "scd_hand_price", None),
+        #     "Material produced":
+        #         lambda a: getattr(a, "material_produced", None),
+        #     "Recycled volume":
+        #         lambda a: getattr(a, "recycled_material_volume", None),
+        #     "Recycled value":
+        #         lambda a: getattr(a, "recycled_material_value", None),
+        #     "Producer costs":
+        #         lambda a: getattr(a, "producer_costs", None),
+        #     "Consumer costs":
+        #         lambda a: getattr(a, "consumer_costs", None),
+        #     "Recycler costs":
+        #         lambda a: getattr(a, "recycler_costs", None),
+        #     "Refurbisher costs":
+        #         lambda a: getattr(a, "refurbisher_costs", None)}
 
-        self.datacollector = DataCollector(
-            model_reporters=model_reporters,
-            agent_reporters=agent_reporters)
+        # self.datacollector = DataCollector(
+        #     model_reporters=model_reporters,
+        #     agent_reporters=agent_reporters)
         
     def shortest_paths(self, target_states, distances_to_target):
         """
@@ -675,10 +656,10 @@ class ABM_MODEL(Model):
     def init_network(self, network, nodes, node_degree, rewiring_prob):
         """
         Set up model's industrial symbiosis (IS) and consumers networks.
-        建立工业共生模式IS和消费者网络。
         """
         if network == "small-world":
-            return nx.watts_strogatz_graph(nodes, node_degree, rewiring_prob, seed=random.seed(self.seed))
+            return nx.watts_strogatz_graph(
+                nodes, node_degree, rewiring_prob, seed=random.seed(self.seed))
         elif network == "complete graph":
             return nx.complete_graph(nodes)
         if network == "random":
@@ -967,7 +948,7 @@ class ABM_MODEL(Model):
         """
         # update consumer incomes
         self.all_comsumer_income = [
-            agent.income for agent in self.schedule.agents if isinstance(agent, Consumer)]
+            agent.income for agent in self.agents if isinstance(agent, Consumer)]
             
         self.total_waste = 0
         # self.total_yearly_new_products = 0
@@ -983,6 +964,10 @@ class ABM_MODEL(Model):
         # self.update_dynamic_lifetime()
 
         # self.average_price_per_function_model()
-   
-        self.schedule.step()
-        self.clock = self.clock + 1
+        
+        # 各个Agent的先后顺序问题
+        self.agents_by_type[Consumer].shuffle_do('step')
+        self.agents_by_type[Manufacturer].shuffle_do('step')
+        self.agents_by_type[SecondHandStore].shuffle_do('step')
+        self.agents_by_type[Recycler].shuffle_do('step')
+

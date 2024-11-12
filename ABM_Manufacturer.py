@@ -40,16 +40,16 @@ class Manufacturer(Agent):
     """
     def __init__(
             self,
-            unique_id,
             model,
+            unique_id,
             material_weights=None,
             virgin_material_price=None,
             recycled_material_price=None,
             recycled_material_percentages=None,
             material_demand_limits=None):
         
-        super().__init__(unique_id, model)
-        
+        super().__init__(model)
+        self.unique_id = unique_id
         self.material_weights = material_weights or {'metals':0.45, 'glass':0.32, 'Plastics':0.17, 'Other':0.06}
         self.virgin_material_price = virgin_material_price or {'metals':1000, 'glass':500, 'Plastics':200, 'Other':350}
         self.recycled_material_price = recycled_material_price or {'metals':1000, 'glass':500, 'Plastics':200, 'Other':350}
@@ -62,7 +62,8 @@ class Manufacturer(Agent):
         self.profit_margin = 0.3
         self.demand_elasticity = 0.2
         self.financial_incentive = 0
-
+        self.sigma_fi = 0.05
+        
         self.cumulative_sales = 0
         self.income = 0
         self.production_cost = 0
@@ -77,7 +78,7 @@ class Manufacturer(Agent):
         production_cost = 0
         recycled_weight = 0
         # Calculate production cost and ensure constraints are met
-        for material in self.material_prices.keys():
+        for material in self.material_weights.keys():
             # Calculate cost for this material
             recycled_material_cost = self.recycled_material_price[material] \
                 * self.recycled_percentages[material] * self.material_weights[material]
@@ -86,7 +87,7 @@ class Manufacturer(Agent):
             production_cost = recycled_material_cost + virgin_material_cost
             recycled_weight += self.recycled_percentages[material] * self.material_weights[material]
         
-        self.financial_incentive = self.sigma_incentive * recycled_weight
+        self.financial_incentive = self.sigma_fi * recycled_weight
         self.production_cost = production_cost
         
         return self.production_cost
@@ -149,5 +150,7 @@ class Manufacturer(Agent):
         Evolution of agent at each step
         """
         self.calculate_production_cost()
-        self.set_product_price()
-        self.count_income()
+        # print(f"Manufacturer {self.unique_id}, production cost: {self.production_cost:.2f}")
+        # self.set_product_price()
+        # self.count_income()
+        # print(f"Manufacturer {self.unique_id} doing.")

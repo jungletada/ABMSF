@@ -102,7 +102,7 @@ class Smartphone:
             # Learning effect: Reduce cost based on the number of phones handled by the store
             # learning_factor = self.initial_repair_cost * (self.model.num_handled_phones / max(1, self.model.initial_phones_handled))
             self.repair_cost = basic_repair_cost #+ epsilon * learning_factor
-            print(f"Phone is out of warranty. Repair cost with learning effect: {self.repair_cost:.2f}")
+            # print(f"Phone is out of warranty. Repair cost with learning effect: {self.repair_cost:.2f}")
             return self.repair_cost
     
     def repair_product(self):
