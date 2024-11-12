@@ -49,7 +49,7 @@ class Smartphone:
         self.decay_rate = decay_rate # Rate at which the performance degrades (lambda in the exponential decay model)
         self.demand_used = demand_used
         
-        self.material_value = 0
+        self.material_value = 500 # material_value depends on the ingredients of product.
 
         # Additional attributes
         self.eol_probability = 0.05  # Probability that the phone reaches end-of-life per time step
@@ -106,7 +106,10 @@ class Smartphone:
             return self.repair_cost
     
     def repair_product(self):
-        """Attempt to repair the phone with a random chance of success."""
+        """
+        Attempt to repair the phone with a random chance of success.
+        如何确定维修后的performance?
+        """
         self.performance = min(0.95, self.performance + 0.3)  # Performance improves after repair
 
     def calculate_resell_price(self):
@@ -166,10 +169,6 @@ class Smartphone:
         self.recycle_price = self.alpha_recycle * self.material_value
         return self.recycle_price
 
-    def calculate_estimated_material_value(self):
-        self.material_value = 100
-        return self.material_value
-
     def recycle_product(self, new_owner_id):
         """
         Process the recycling of the smartphone and update its owner.
@@ -177,10 +176,11 @@ class Smartphone:
         self.user_id = new_owner_id  # Update the user ID to the new owner
 
     def __repr__(self):
-        return (f"Smartphone(is_new={self.is_new}, "
-                f"performance={self.performance:.2f}, " 
-                f"time_held={self.time_held}, "
-                f"status={'working' if self.status == 1 else 'broken'}, "
-                f"purchase_price={self.purchase_price}, "
-                f"user_id={self.user_id}, "
-                f"resell_value={self.resell_value:.2f})")
+        return (
+            f"Smartphone(is_new={self.is_new}, "
+            f"performance={self.performance:.2f}, " 
+            f"time_held={self.time_held}, "
+            f"purchase_price={self.purchase_price}, "
+            f"user_id={self.user_id}, "
+            f"resell_value={self.resell_value:.2f})"
+            )

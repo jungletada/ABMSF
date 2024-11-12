@@ -23,7 +23,7 @@ import random
 import math
 
 
-class ABM_CE_PV(Model):
+class ABM_MODEL(Model):
     """
 
     Attributes:

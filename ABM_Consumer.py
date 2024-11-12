@@ -56,12 +56,13 @@ class Consumer(Agent):
         self.decision = None
         self.eol_pathway = None
         self.pathway_choice = None
-        # Consumer acceptance and use of information technology: Extending the unified theory of acceptance and use of technology
+        # Consumer acceptance and use of information technology:
+        # Extending the unified theory of acceptance and use of technology
         self.to_purchase = False
         
         self.w_att_buy_or_not = 0.45
         self.w_sn_buy_or_not = 0.20
-        self.w_pbc_buy_or_not = 1 - self.w_att_buy_or_not - self.w_sn_buy_or_not
+        self.w_pbc_buy_or_not = 0.35
         
         self.income = self.model.consumer_incomes[unique_id]
         self.attitude_purchase = self.model.attitude_purchase[unique_id]
@@ -71,11 +72,11 @@ class Consumer(Agent):
         self.landfill_cost = 0
         self.hoard_cost = 0
         self.recycle_cost = 0
-        
+
         self.max_time_hoard = max_time_hoard
         self.num_cumulative_purchase_new = 0
         self.num_cumulative_purchase_used = 0
-        
+       
         # column sum up to 1
         self.weight_att_eol = {"repair": 0.005, "resell": 0.01, "recycle": 0.1, "landfill": 0.4425, "hoard": 0.4425} 
         self.weight_sn_eol = {"repair": 0.005, "resell": 0.01, "recycle": 0.1, "landfill": 0.4425, "hoard": 0.4425} 
@@ -183,7 +184,7 @@ class Consumer(Agent):
             max_eol = max(abs(i) for i in pbc_eol.values())
             return {key: -1 * value / max_eol * weight_pbc[key] for key, value in pbc_eol.items()}
     
-    def tpb_decision(self, decision, weight_att, weight_sn, weight_pbc, 
+    def tpb_decision(self, decision, weight_att, weight_sn, weight_pbc,
                      pbc_costs, att_level_reuse):
         """
         Select the decision with highest behavioral intention following the
@@ -229,10 +230,8 @@ class Consumer(Agent):
         Returns:
             bool: True if purchase is made, False otherwise.
         """
-        if self.smartphone is None or self.smartphone.status == 0:  # No smartphone
-            self.to_purchase = True
-        else:
-            self.to_purchase = False
+
+        self.to_purchase = self.smartphone is None
 
         # # TPB model
         # neighbors_nodes = self.model.grid.get_neighbors(self.pos, include_center=False)
@@ -260,7 +259,7 @@ class Consumer(Agent):
         if self.smartphone:
             self.smartphone.update_time_held()
 
-    def get_eol_cost(self):
+    def get_eol_cost_from_smartphone(self):
         """
         Calculate and set the costs for different end-of-life options.
         for perceived_behavioral_control in TPB model.
@@ -276,7 +275,8 @@ class Consumer(Agent):
             "resell": self.resell_cost / self.income, 
             "recycle": self.recycle_cost / self.income, 
             "landfill": self.landfill_cost, 
-            "hoard": self.hoard_cost} 
+            "hoard": self.hoard_cost
+            }
 
     def purchase_smartphone(self, market):
         """
@@ -322,7 +322,7 @@ class Consumer(Agent):
         """
         self.smartphone.repair_product()
         print(f"Consumer {self.consumer_id} repaired their smartphone.")
-         
+
     def step(self):
         """
         Main simulation step for the consumer.
@@ -357,7 +357,8 @@ class Consumer(Agent):
                               att_level_reuse=0.2)
             
             if self.pathway_choice == "hoard":
-                self.use_smartphone() # update the time held and performance
+                # update the time held and performance
+                self.use_smartphone()
 
             elif self.pathway_choice == "resell":
                 self.resell_smartphone(new_owner_id=None)
@@ -369,5 +370,4 @@ class Consumer(Agent):
                 self.landfill_smartphone()
                 
             elif self.pathway_choice == "repair":
-                self.repair_smartphone()
-                
+                self.repair_smartphone()      

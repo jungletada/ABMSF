@@ -19,14 +19,14 @@ class Recyclers(Agent):
         social_influencability_boundaries (from Ghali et al. 2017)
     """
 
-    def __init__(self,
-                 unique_id,
-                 model,
-                 material_weights={'metals':0.45, 'glass':0.32, 'Plastics':0.17, 'Other':0.06},
-                 virgin_material_price={'metals':1000, 'glass':500, 'Plastics':200, 'Other':350},
-                 quality_factor={'metals':0.7, 'glass':0.5, 'Plastics':0.5, 'Other':0.5},
-                 recycle_waste_rate={'metals':0.7, 'glass':0.5, 'Plastics':0.5, 'Other':0.5},
-                 ):
+    def __init__(
+            self,
+            unique_id,
+            model,
+            material_weights={'metals':0.45, 'glass':0.32, 'Plastics':0.17, 'Other':0.06},
+            virgin_material_price={'metals':1000, 'glass':500, 'Plastics':200, 'Other':350},
+            quality_factor={'metals':0.7, 'glass':0.5, 'Plastics':0.5, 'Other':0.5},
+            recycle_waste_rate={'metals':0.7, 'glass':0.5, 'Plastics':0.5, 'Other':0.5},):
         """
         Creation of new recycler agent
         """
@@ -45,19 +45,22 @@ class Recyclers(Agent):
         for material in self.virgin_material_price.keys():
             self.recycled_material_price[material] = \
                 self.quality_factor[material] * self.virgin_material_price[material]
-            
-    def update_recycle_numer(self):
-        self.recycle_number_now = 0
 
-    def recycle_from_consumer(self, consumer_id):
+    def recycle_product_from_consumer(self, smartphone):
+        """
+
+        """
+        recycle_price = smartphone.calculate_recycle_price()
         self.recycle_number_now += 1
-
-    def sell_to_manufacturer(self, manufacturer_id):
-        pass
+        return recycle_price
    
     def update_recycle_waste(self, mce):
+        """
+        
+        """
         for material in self.virgin_material_price.keys():
-            self.recycle_waste += self.recycle_waste_rate[material] * mce * self.material_weights[material]
+            self.recycle_waste += self.recycle_waste_rate[material] \
+                * mce * self.material_weights[material]
 
     def step(self):
         """
