@@ -42,19 +42,19 @@ class Manufacturer(Agent):
             self,
             unique_id,
             model,
-            material_weights={'metals':0.45, 'glass':0.32, 'Plastics':0.17, 'Other':0.06},
-            virgin_material_price={'metals':1000, 'glass':500, 'Plastics':200, 'Other':350},
-            recycled_material_price={'metals':1000, 'glass':500, 'Plastics':200, 'Other':350},
-            recycled_material_percentages={'metals':0.5, 'glass':0.1, 'Plastics':0.1, 'Other':0.3},
-            material_demand_limits={'metals':0.5, 'glass':0.1, 'Plastics':0.1, 'Other':0.3},):
+            material_weights=None,
+            virgin_material_price=None,
+            recycled_material_price=None,
+            recycled_material_percentages=None,
+            material_demand_limits=None):
         
         super().__init__(unique_id, model)
-
-        self.material_weights = material_weights
-        self.virgin_material_price = virgin_material_price
-        self.recycled_material_price = recycled_material_price
-        self.recycled_percentages = recycled_material_percentages
-        self.demand_limits = material_demand_limits
+        
+        self.material_weights = material_weights or {'metals':0.45, 'glass':0.32, 'Plastics':0.17, 'Other':0.06}
+        self.virgin_material_price = virgin_material_price or {'metals':1000, 'glass':500, 'Plastics':200, 'Other':350}
+        self.recycled_material_price = recycled_material_price or {'metals':1000, 'glass':500, 'Plastics':200, 'Other':350}
+        self.recycled_percentages = recycled_material_percentages or {'metals':0.5, 'glass':0.1, 'Plastics':0.1, 'Other':0.3}
+        self.demand_limits = material_demand_limits or {'metals':0.5, 'glass':0.1, 'Plastics':0.1, 'Other':0.3}
         self.stability_goal = 0.4
 
         # For pricing strategy
@@ -107,9 +107,9 @@ class Manufacturer(Agent):
 
         return self.product_price
 
-    def sell_product_to_consumer(self, consumer_id):
+    def trade_with_consumer(self, consumer_id):
         """
-        Sell product to a consumer.
+        Sell a product to a consumer.
 
         This method creates a new Smartphone instance with the current product price
         and assigns it to the specified consumer. It also increments the cumulative
@@ -121,6 +121,7 @@ class Manufacturer(Agent):
         Returns:
             Smartphone: A new Smartphone instance created for the consumer.
         """
+
         smartphone = Smartphone(
             is_new=True,
             model=self.model,
@@ -130,6 +131,11 @@ class Manufacturer(Agent):
             user_id=consumer_id)
         self.cumulative_sales += 1
         return smartphone
+
+    def trade_with_recycler(self, recycler_agent):
+        """
+        """
+        self.partner = recycler_agent
 
     def count_income(self):
         """

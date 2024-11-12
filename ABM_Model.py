@@ -1,26 +1,20 @@
-# -*- coding:utf-8 -*-
-"""
-Created on Wed Nov 21 09:33 2019
-
-@author Julien Walzberg - Julien.Walzberg@nrel.gov
-
-Model - agent-based simulations of the circular economy (ABSiCE)
-"""
+import random
+import math
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import networkx as nx
 
 from mesa import Model
-from ABM_Consumer import Consumers
-from ABM_CE_RecyclerAgents import Recyclers
-from ABM_CE_RefurbisherAgents import Refurbishers
-from ABM_CE_ProducerAgents import Producers
 from mesa.time import BaseScheduler
 from mesa.space import NetworkGrid
 from mesa.datacollection import DataCollector
-import networkx as nx
-import numpy as np
-import matplotlib.pyplot as plt
-import pandas as pd
-import random
-import math
+
+
+from ABM_Consumer import Consumer
+from ABM_CE_RecyclerAgents import Recyclers
+from ABM_CE_RefurbisherAgents import Refurbishers
+from ABM_CE_ProducerAgents import Producers
 
 
 class ABM_MODEL(Model):
@@ -199,16 +193,14 @@ class ABM_MODEL(Model):
                  num_producers=60,
                  prod_n_recyc_node_degree=5,
                  prod_n_recyc_network_type="small-world",
-                 num_refurbishers=15,
-                 consumers_distribution={"residential": 1,
-                                         "commercial": 0., "utility": 0.},
+                 num_sechdstores=15,
+                 consumers_distribution={"residential": 1, "commercial": 0., "utility": 0.},
                  init_eol_rate={"repair": 0.005, "sell": 0.01, "recycle": 0.1, "landfill": 0.4425, "hoard": 0.4425},
                  init_purchase_rate={"new": 0.9995, "used": 0.0005},
                  total_number_product=[38, 38, 38, 38, 38, 38, 38, 139, 251,
                                        378, 739, 1670, 2935, 4146, 5432, 6525,
                                        3609, 4207, 4905, 5719],
-                 product_distribution={"residential": 1,
-                                         "commercial": 0., "utility": 0.},
+                 product_distribution={"residential": 1, "commercial": 0., "utility": 0.},
                  product_growth=[0.166, 0.045],
                  growth_threshold=10,
                  failure_rate_alpha=[2.4928, 5.3759, 3.93495],
@@ -231,7 +223,7 @@ class ABM_MODEL(Model):
                  w_pbc_reuse=0.382,
                  w_a_reuse=0.464,
                  product_lifetime=30,
-                 all_EoL_pathways={"repair": True, "sell": True,
+                 all_eol_pathways={"repair": True, "sell": True,
                                    "recycle": True, "landfill": True,
                                    "hoard": True},
                  max_storage=[1, 8, 4],
@@ -254,8 +246,7 @@ class ABM_MODEL(Model):
                  fsthand_mkt_pric_reg_param=[1, 0.04],
                  # HERE
                  refurbisher_margin=[0.4, 0.6, 0.5],
-                 purchase_choices={"new": True, "used": True,
-                                   "certified": False},
+                 purchase_choices={"new": True, "used": True, "certified": False},
                  init_trust_boundaries=[-1, 1],
                  social_event_boundaries=[-1, 1],
                  social_influencability_boundaries=[0, 1],
@@ -328,13 +319,13 @@ class ABM_MODEL(Model):
         random.seed(self.seed)
 
         self.num_consumers = num_consumers
-        self.consumers_node_degree = consumers_node_degree   
-        self.consumers_network_type = consumers_network_type 
+        self.consumers_node_degree = consumers_node_degree
+        self.consumers_network_type = consumers_network_type
         
         self.num_recyclers = num_recyclers # 回收商
         self.num_producers = num_producers # 制造商
         self.num_prod_n_recyc = num_recyclers + num_producers # 回收商+制造商
-        self.num_refurbishers = num_refurbishers # 二手商
+        self.num_sechdstores = num_sechdstores # 二手商
         
         self.prod_n_recyc_node_degree = prod_n_recyc_node_degree
         self.prod_n_recyc_network_type = prod_n_recyc_network_type
@@ -351,7 +342,7 @@ class ABM_MODEL(Model):
         self.running = True
         self.color_map = []
         self.theory_of_planned_behavior = theory_of_planned_behavior
-        self.all_EoL_pathways = all_EoL_pathways
+        self.all_eol_pathways = all_eol_pathways
         self.purchase_options = purchase_choices
         self.avg_failure_rate = failure_rate_alpha
         self.original_num_prod = total_number_product
@@ -361,8 +352,8 @@ class ABM_MODEL(Model):
         self.fsthand_mkt_pric_reg_param = fsthand_mkt_pric_reg_param    #### delete
         
         self.average_new_product_price = 5000   # TBD
-        self.average_second_hand_price = 2000 # TBD   
-        
+        self.average_second_hand_price = 2000   # TBD
+        self.all_comsumer_income = []
         self.repairability = repairability
         
         self.total_waste = 0
@@ -375,7 +366,7 @@ class ABM_MODEL(Model):
         self.yearly_repaired_waste = 0
         
         self.imperfect_substitution = imperfect_substitution
-        perceived_behavioral_control = [np.nan] * len(all_EoL_pathways)
+        perceived_behavioral_control = [np.nan] * len(all_eol_pathways)
         
         # Adjacency matrix of trust network: trust of row index into column
         self.trust_prod = np.asmatrix(np.random.uniform(
@@ -403,7 +394,7 @@ class ABM_MODEL(Model):
         
         # Change eol_pathways depending on business model
         if self.epr_business_model:
-            self.all_EoL_pathways["landfill"] = False
+            self.all_eol_pathways["landfill"] = False
             self.industrial_symbiosis = False
         
         # Dynamic lifetime model
@@ -428,41 +419,39 @@ class ABM_MODEL(Model):
         self.product_growth = product_growth
         self.growth_threshold = growth_threshold
         
-        # Build graphs 
-        # H1: Consumer's network
-        self.H1 = self.init_network(
+        ###################################################
+        #                                                 #
+        #                  Building graphs                #
+        #                                                 #
+        ###################################################
+        # Consumer's network
+        self.consumer_network = self.init_network(
             network=self.consumers_network_type,
             nodes=self.num_consumers,
-            node_degree=self.consumers_node_degree, 
+            node_degree=self.consumers_node_degree,
             rewiring_prob=rewiring_prob)
-        
-        # H2: Recycler's network
-        self.H2 = self.init_network(
+
+        # Manufacturer and Recycler's network
+        self.recycler_network = self.init_network(
             network=self.prod_n_recyc_network_type,
             nodes=self.num_prod_n_recyc,
             node_degree=self.prod_n_recyc_node_degree,
             rewiring_prob=rewiring_prob)
-        
-        self.H3 = self.init_network(
-            network="complete graph", 
-            nodes=self.num_refurbishers,
-            node_degree="NaN", 
+
+        # Second-hand store's network
+        self.sechdstore_network = self.init_network(
+            network="complete graph",
+            nodes=self.num_sechdstores,
+            node_degree="NaN",
             rewiring_prob=rewiring_prob)
-        
-        self.G = nx.disjoint_union(self.H1, self.H2)
-        self.G = nx.disjoint_union(self.G, self.H3)
-        self.grid = NetworkGrid(self.G)
-        
+
+        self.network = nx.disjoint_union(self.consumer_network, self.recycler_network)
+        self.network = nx.disjoint_union(self.network, self.sechdstore_network)
+        self.grid = NetworkGrid(self.network)
+
         # Defines scheduler
         self.schedule = BaseScheduler(self)
-        
-        # Compute distance for the repair, sell, recycle, landfill and storage
-        # pathways. Assumptions: 1) Only certain states have recycling
-        # facilities, 2) The refurbisher who performs repair and
-        # landfill site are both within the state of the PV owner, 3) Sales of
-        # old PV modules occur across the whole US, randomly, 4) Storage
-        # occurs on site and so there is no associated transportation.
-        # (See consumer module for sales of old PV modules).
+
         self.all_states = ['Texas', 'California', 'Montana', 'New Mexico',
                       'Arizona', 'Nevada', 'Colorado', 'Oregon', 'Wyoming',
                       'Michigan', 'Minnesota', 'Utah', 'Idaho', 'Kansas',
@@ -486,11 +475,11 @@ class ABM_MODEL(Model):
                      list(pd.read_csv("StatesAdjacencyMatrix.csv"))))
         self.states_graph = nx.relabel_nodes(self.states_graph, nodes_states_dic)
         self.recycling_states = recycling_states
-        
+
         distances_to_recyclers = []
         distances_to_recyclers = self.shortest_paths(
             self.recycling_states, distances_to_recyclers)
-        
+
         self.mn_mx_av_distance_to_recycler = [ # minimum, maximum, average
             min(distances_to_recyclers), 
             max(distances_to_recyclers),
@@ -516,39 +505,23 @@ class ABM_MODEL(Model):
         
         # Generate consumer incomes
         self.consumer_incomes = self.generate_consumer_income(self.num_consumers)
-        # Generate consumer attitude to purchase
-        self.consumer_attitude_purchase = np.random.uniform(0.05, 0.95, self.num_consumers)
+
         # Create agents, G nodes labels are equal to agents' unique_ID
-        for node in self.G.nodes():
-            ###################### Consumers ######################
+        for node in self.network.nodes():
+            #===================== Consumers =====================#
             if node < self.num_consumers:
-                a = Consumers(
+                a = Consumer(
                     unique_id=node, # agent ID ~ node ID in the network
                     model=self,     # ABM_Model
-                    product_growth=product_growth, # [List] piecewise function (ratio)
-                    failure_rate_alpha=failure_rate_alpha, # [List] triangular distribution
-                    perceived_behavioral_control=perceived_behavioral_control, # [List] costs of each EoL pathway
-                    w_sn_eol=w_sn_eol,      # weight of subjective norm in agents'decisions
-                    w_pbc_eol=w_pbc_eol,    # weight of perceived behavioral control in agents'decisions
-                    w_a_eol=w_a_eol,        # weight of attitude in the agents'decisions
-                    w_sn_reuse=w_sn_reuse,  # weight of subjective norm in remanufactured product purchase decision
-                    w_pbc_reuse=w_pbc_reuse,# weight for perceived behavioral control in remanufactured product purchase decision
-                    w_a_reuse=w_a_reuse,    # weight for attitude in remanufactured product purchase decision
-                    landfill_cost=landfill_cost, # [List] triangular distribution ($/fu)
-                    hoarding_cost=hoarding_cost, # [List] triangular distribution ($/fu)
-                    used_product_substitution_rate=used_product_substitution_rate, # [List] triangular distribution (ratio)
-                    att_distrib_param_eol=att_distrib_param_eol,      # [List] bounded normal distribution
-                    att_distrib_param_reuse=att_distrib_param_reuse,  # [List] bounded normal distribution
-                    max_storage=max_storage, # [List] triangular distribution (years)
-                    consumers_distribution=consumers_distribution, # allocation of different types of consumers
-                    product_distribution=product_distribution) # ratios of product among consumer types
+                ) 
                 
                 self.schedule.add(a)
                 self.grid.place_agent(a, node)  # Add the agent to the node
                 
-            elif node < self.num_recyclers + self.num_consumers: 
-                ###################### Recyclers ######################
-                b = Recyclers(unique_id=node, 
+            elif node < self.num_recyclers + self.num_consumers:
+                #===================== Recyclers =====================#
+                b = Recyclers(
+                    unique_id=node, 
                               model=self, 
                               original_recycling_cost=self.original_recycling_cost,
                               init_eol_rate=init_eol_rate,
@@ -556,51 +529,51 @@ class ABM_MODEL(Model):
                               social_influencability_boundaries=social_influencability_boundaries)
                 self.schedule.add(b)
                 self.grid.place_agent(b, node)
-                
+
             elif node < self.num_prod_n_recyc + self.num_consumers:
-                ###################### Producers ######################
+                #===================== Producers =====================#
                 c = Producers(
-                    node, 
-                    self, 
-                    scd_mat_prices, 
+                    node,
+                    self,
+                    scd_mat_prices,
                     virgin_mat_prices,
                     social_influencability_boundaries,
                     self_confidence_boundaries)
                 
                 self.schedule.add(c)
                 self.grid.place_agent(c, node)
-                
+
             else:
-                ###################### Refurbishers ######################
+                #================== Second-hand Store ==================#
                 d = Refurbishers(
                     node, 
-                    self, 
+                    self,
                     original_repairing_cost,
                     init_eol_rate,
                     repairing_learning_shape_factor,
-                    scndhand_mkt_pric_rate, 
+                    scndhand_mkt_pric_rate,
                     refurbisher_margin,
                     max_storage)
                 
                 self.schedule.add(d)
                 self.grid.place_agent(d, node)
-                
+
         # Draw initial graph
         # nx.draw(self.G, with_labels=True)
         # plt.show()
 
         # Defines reporters and set up data collector
-        ABM_CE_model_reporters = {
+        model_reporters = {
             "Year": lambda c: self.report_output("year"),
             "Average weight of waste": lambda c: self.report_output("weight"),
-            "Agents repairing": lambda c: self.count_EoL("repairing"),
-            "Agents selling": lambda c: self.count_EoL("selling"),
-            "Agents recycling": lambda c: self.count_EoL("recycling"),
-            "Agents landfilling": lambda c: self.count_EoL("landfilling"),
-            "Agents storing": lambda c: self.count_EoL("hoarding"),
-            "Agents buying new": lambda c: self.count_EoL("buy_new"),
-            "Agents buying used": lambda c: self.count_EoL("buy_used"),
-            "Agents buying certified": lambda c: self.count_EoL("certified"),
+            "Agents repairing": lambda c: self.count_eol_products("repairing"),
+            "Agents selling": lambda c: self.count_eol_products("selling"),
+            "Agents recycling": lambda c: self.count_eol_products("recycling"),
+            "Agents landfilling": lambda c: self.count_eol_products("landfilling"),
+            "Agents storing": lambda c: self.count_eol_products("hoarding"),
+            "Agents buying new": lambda c: self.count_eol_products("buy_new"),
+            "Agents buying used": lambda c: self.count_eol_products("buy_used"),
+            "Agents buying certified": lambda c: self.count_eol_products("certified"),
             "Total product": lambda c:self.report_output("product_stock"),
             "New product": lambda c:self.report_output("product_stock_new"),
             "Used product": lambda c:self.report_output("product_stock_used"),
@@ -634,7 +607,7 @@ class ABM_MODEL(Model):
             "Refurbisher costs": lambda c:self.report_output("refurbisher_costs"),
             "Refurbisher costs w margins": lambda c:self.report_output("refurbisher_costs_w_margins")}
 
-        ABM_CE_agent_reporters = {
+        agent_reporters = {
             "Year": 
                 lambda c: self.report_output("year"),
             "Number_product_repaired":
@@ -675,44 +648,8 @@ class ABM_MODEL(Model):
                 lambda a: getattr(a, "refurbisher_costs", None)}
 
         self.datacollector = DataCollector(
-            model_reporters=ABM_CE_model_reporters,
-            agent_reporters=ABM_CE_agent_reporters)
-    
-    def generate_consumer_income(self, num_consumers, mu=10, sigma=0.6):
-        """ Consumer Agent
-        Generate income distribution using an accumulative law model.
-        Increments follow a log-normal distribution, and the Matthew effect is applied.
-
-        Parameters:
-            num_consumers (int): Number of consumers to generate.
-            mu (float): Mean of the log-normal distribution for increments.
-            sigma (float): Standard deviation of the log-normal distribution for increments.
-            
-        Returns:
-            np.ndarray: Final array of accumulated incomes for the population.
-        """
-        # Initialize consumers with random initial incomes (log-normal distribution)
-        incomes = np.random.lognormal(mu, sigma, num_consumers)
-        return incomes
-
-    def update_consumer_income(self, mu=8, sigma=0.6, growth_rate=0.05):
-        """
-        Update consumer incomes using a log-normal distribution and Matthew effect.
-
-        Args:
-            mu (float): Mean of the log-normal distribution.
-            sigma (float): Standard deviation of the log-normal distribution.
-            growth_rate (float): Overall income growth rate.
-        """
-        increments = np.random.lognormal(mu, sigma, self.num_consumers)  # Income increments
-        # Matthew effect: allocate increments more likely to wealthier individuals
-        probabilities = self.consumer_incomes / np.sum(self.consumer_incomes)  # Wealthier individuals get larger share
-        new_incomes = self.consumer_incomes + growth_rate * increments * probabilities
-        ### consumers update incomes
-        for agent in self.schedule.agents:
-            if agent.unique_id < self.num_consumers:
-                agent.income = new_incomes[agent.unique_id]
-        self.consumer_incomes = new_incomes
+            model_reporters=model_reporters,
+            agent_reporters=agent_reporters)
         
     def shortest_paths(self, target_states, distances_to_target):
         """
@@ -754,12 +691,16 @@ class ABM_MODEL(Model):
             return nx.watts_strogatz_graph(nodes, node_degree, rewiring_prob)
 
     def update_dynamic_lifetime(self):
+        """
+
+        """
         if self.dynamic_lifetime_model["Dynamic lifetime"]:
             self.d_product_lifetimes = [
                 self.dynamic_lifetime_model["d_lifetime_intercept"] +
                 self.dynamic_lifetime_model["d_lifetime_reg_coeff"] *
                 x for x in range(len(self.total_number_product) + self.clock
                                  + 1)]
+        
         elif self.dynamic_lifetime_model["Seed"]:
             self.d_product_lifetimes = \
                 [self.product_lifetime] * \
@@ -843,14 +784,14 @@ class ABM_MODEL(Model):
         self.fsthand_mkt_pric = self.fsthand_mkt_pric_reg_param[0] * math.e **(
                 -self.fsthand_mkt_pric_reg_param[1] * (self.clock + correction_year))
 
-    def count_EoL(model, condition):
+    def count_eol_products(self, condition):
         """
         Count adoption in each end of life pathway. Values are then
         reported by model's reporters.
         """
         count = 0
-        for agent in model.schedule.agents:
-            if agent.unique_id < model.num_consumers:
+        for agent in self.schedule.agents:
+            if agent.unique_id < self.num_consumers:
                 if condition == "repairing" and agent.EoL_pathway == "repair":
                     count += 1
                 elif condition == "selling" and agent.EoL_pathway == "sell":
@@ -865,7 +806,7 @@ class ABM_MODEL(Model):
                     count += 1
                 elif condition == "buy_used" and agent.purchase_choice == "used":
                     count += 1
-                    model.consumer_used_product += 1
+                    self.consumer_used_product += 1
                 elif condition == "buy_certified" and \
                         agent.purchase_choice == "certified":
                     count += 1
@@ -875,7 +816,7 @@ class ABM_MODEL(Model):
                 continue
         return count
 
-    def report_output(model, condition):
+    def report_output(self, condition):
         """
         Count waste streams in each end of life pathway. Values are then
         reported by model's reporters.
@@ -886,138 +827,138 @@ class ABM_MODEL(Model):
         industrial_waste_recycled = 0
         industrial_waste_landfill_mass = 0
         industrial_waste_recycled_mass = 0
-        for agent in model.schedule.agents:
-            if model.num_consumers + model.num_recyclers <= agent.unique_id < \
-                    model.num_consumers + model.num_prod_n_recyc:
-                if model.epr_business_model:
+        for agent in self.schedule.agents:
+            if self.num_consumers + self.num_recyclers <= agent.unique_id < \
+                    self.num_consumers + self.num_prod_n_recyc:
+                if self.epr_business_model:
                     industrial_waste_recycled += \
-                        agent.industrial_waste_generated / model.num_consumers
+                        agent.industrial_waste_generated / self.num_consumers
                     industrial_waste_recycled_mass += \
-                        model.yearly_product_wght * \
-                        agent.industrial_waste_generated / model.num_consumers
+                        self.yearly_product_wght * \
+                        agent.industrial_waste_generated / self.num_consumers
                 else:
                     industrial_waste_landfill += \
-                        agent.industrial_waste_generated / model.num_consumers
+                        agent.industrial_waste_generated / self.num_consumers
                     industrial_waste_landfill_mass += \
-                        model.yearly_product_wght * \
-                        agent.industrial_waste_generated / model.num_consumers
-        for agent in model.schedule.agents:
+                        self.yearly_product_wght * \
+                        agent.industrial_waste_generated / self.num_consumers
+        for agent in self.schedule.agents:
             if condition == "product_stock" and agent.unique_id < \
-                    model.num_consumers:
+                    self.num_consumers:
                 count += sum(agent.number_product_hard_copy)
             elif condition == "product_stock_new" and agent.unique_id < \
-                    model.num_consumers:
+                    self.num_consumers:
                 count += sum(agent.new_products_hard_copy)
             if condition == "product_stock_used" and agent.unique_id < \
-                    model.num_consumers:
+                    self.num_consumers:
                 count += sum(agent.used_products_hard_copy)
             elif condition == "prod_stock_new_mass" and agent.unique_id < \
-                    model.num_consumers:
+                    self.num_consumers:
                 count += agent.new_products_mass
             if condition == "prod_stock_used_mass" and agent.unique_id < \
-                    model.num_consumers:
+                    self.num_consumers:
                 count += agent.used_products_mass
             elif condition == "product_repaired" and agent.unique_id < \
-                    model.num_consumers:
+                    self.num_consumers:
                 count += agent.number_product_repaired
             elif condition == "product_sold" and agent.unique_id < \
-                    model.num_consumers:
+                    self.num_consumers:
                 count += agent.number_product_sold
                 count2 += agent.number_product_sold
                 count2 += agent.number_product_repaired
             elif condition == "product_recycled" and agent.unique_id < \
-                    model.num_consumers:
+                    self.num_consumers:
                 count += agent.number_product_recycled
                 count += industrial_waste_recycled
             elif condition == "product_landfilled" and agent.unique_id < \
-                    model.num_consumers:
+                    self.num_consumers:
                 count += agent.number_product_landfilled
                 count += industrial_waste_landfill
             elif condition == "product_hoarded" and agent.unique_id < \
-                    model.num_consumers:
+                    self.num_consumers:
                 count += agent.number_product_hoarded
             elif condition == "product_new_repaired" and agent.unique_id < \
-                    model.num_consumers:
+                    self.num_consumers:
                 count += agent.number_new_prod_repaired
             elif condition == "product_new_sold" and agent.unique_id < \
-                    model.num_consumers:
+                    self.num_consumers:
                 count += agent.number_new_prod_sold
             elif condition == "product_new_recycled" and agent.unique_id < \
-                    model.num_consumers:
+                    self.num_consumers:
                 count += agent.number_new_prod_recycled
                 count += industrial_waste_recycled_mass
             elif condition == "product_new_landfilled" and agent.unique_id < \
-                    model.num_consumers:
+                    self.num_consumers:
                 count += agent.number_new_prod_landfilled
                 count += industrial_waste_landfill_mass
             elif condition == "product_new_hoarded" and agent.unique_id < \
-                    model.num_consumers:
+                    self.num_consumers:
                 count += agent.number_new_prod_hoarded
             elif condition == "product_used_repaired" and agent.unique_id < \
-                    model.num_consumers:
+                    self.num_consumers:
                 count += agent.number_used_prod_repaired
             elif condition == "product_used_sold" and agent.unique_id < \
-                    model.num_consumers:
+                    self.num_consumers:
                 count += agent.number_used_prod_sold
             elif condition == "product_used_recycled" and agent.unique_id < \
-                    model.num_consumers:
+                    self.num_consumers:
                 count += agent.number_used_prod_recycled
             elif condition == "product_used_landfilled" and agent.unique_id < \
-                    model.num_consumers:
+                    self.num_consumers:
                 count += agent.number_used_prod_landfilled
             elif condition == "product_used_hoarded" and agent.unique_id < \
-                    model.num_consumers:
+                    self.num_consumers:
                 count += agent.number_used_prod_hoarded
             elif condition == "consumer_costs" and agent.unique_id < \
-                    model.num_consumers:
+                    self.num_consumers:
                 count += agent.consumer_costs
             elif condition == "average_landfill_cost" and agent.unique_id < \
-                    model.num_consumers:
-                count += agent.landfill_cost / model.num_consumers
+                    self.num_consumers:
+                count += agent.landfill_cost / self.num_consumers
             elif condition == "average_hoarding_cost" and agent.unique_id < \
-                    model.num_consumers:
-                count += agent.hoarding_cost / model.num_consumers
-            elif condition == "average_recycling_cost" and model.num_consumers\
-                    <= agent.unique_id < model.num_consumers + \
-                    model.num_recyclers:
-                count += agent.recycling_cost / model.num_recyclers
-            elif condition == "average_repairing_cost" and model.num_consumers\
-                    + model.num_prod_n_recyc <= agent.unique_id:
-                count += agent.repairing_cost / model.num_refurbishers
+                    self.num_consumers:
+                count += agent.hoarding_cost / self.num_consumers
+            elif condition == "average_recycling_cost" and self.num_consumers\
+                    <= agent.unique_id < self.num_consumers + \
+                    self.num_recyclers:
+                count += agent.recycling_cost / self.num_recyclers
+            elif condition == "average_repairing_cost" and self.num_consumers\
+                    + self.num_prod_n_recyc <= agent.unique_id:
+                count += agent.repairing_cost / self.num_sechdstores
             elif condition == "average_second_hand_price" and \
-                    model.num_consumers + model.num_prod_n_recyc <= agent.unique_id:
-                count += (-1 * agent.scd_hand_price) / model.num_refurbishers
+                    self.num_consumers + self.num_prod_n_recyc <= agent.unique_id:
+                count += (-1 * agent.scd_hand_price) / self.num_sechdstores
             elif condition == "year":
-                count = 2020 + model.clock
+                count = 2020 + self.clock
             elif condition == "weight":
-                count = model.dynamic_product_average_wght
-            elif condition == "recycled_mat_volume" and model.num_consumers + \
-                    model.num_recyclers <= agent.unique_id < \
-                    model.num_consumers + model.num_prod_n_recyc:
+                count = self.dynamic_product_average_wght
+            elif condition == "recycled_mat_volume" and self.num_consumers + \
+                    self.num_recyclers <= agent.unique_id < \
+                    self.num_consumers + self.num_prod_n_recyc:
                 if not np.isnan(agent.recycled_material_volume):
                     count += agent.recycled_material_volume
-            elif condition == "recycled_mat_value" and model.num_consumers + \
-                    model.num_recyclers <= agent.unique_id < \
-                    model.num_consumers + model.num_prod_n_recyc:
+            elif condition == "recycled_mat_value" and self.num_consumers + \
+                    self.num_recyclers <= agent.unique_id < \
+                    self.num_consumers + self.num_prod_n_recyc:
                 if not np.isnan(agent.recycled_material_value):
                     count += agent.recycled_material_value
-            elif condition == "producer_costs" and model.num_consumers + \
-                    model.num_recyclers <= agent.unique_id < \
-                    model.num_consumers + model.num_prod_n_recyc:
+            elif condition == "producer_costs" and self.num_consumers + \
+                    self.num_recyclers <= agent.unique_id < \
+                    self.num_consumers + self.num_prod_n_recyc:
                 count += agent.producer_costs
-            elif condition == "recycler_costs" and model.num_consumers <= \
-                    agent.unique_id < model.num_consumers + \
-                    model.num_recyclers:
+            elif condition == "recycler_costs" and self.num_consumers <= \
+                    agent.unique_id < self.num_consumers + \
+                    self.num_recyclers:
                 count += agent.recycler_costs
-            elif condition == "refurbisher_costs" and model.num_consumers + \
-                    model.num_prod_n_recyc <= agent.unique_id:
+            elif condition == "refurbisher_costs" and self.num_consumers + \
+                    self.num_prod_n_recyc <= agent.unique_id:
                 count += agent.refurbisher_costs
-            elif condition == "refurbisher_costs_w_margins" and model.num_consumers + \
-                    model.num_prod_n_recyc <= agent.unique_id:
+            elif condition == "refurbisher_costs_w_margins" and self.num_consumers + \
+                    self.num_prod_n_recyc <= agent.unique_id:
                 count += agent.refurbisher_costs_w_margins
         if condition == "product_sold":
-            model.sold_repaired_waste += count2 - model.past_sold_repaired_waste
-            model.past_sold_repaired_waste = count2
+            self.sold_repaired_waste += count2 - self.past_sold_repaired_waste
+            self.past_sold_repaired_waste = count2
         return count
 
     def step(self):
@@ -1025,23 +966,23 @@ class ABM_MODEL(Model):
         Advance the model by one step and collect data.
         """
         # update consumer incomes
-        if self.clock % 12 == 0:
-            self.update_consumer_income()
+        self.all_comsumer_income = [
+            agent.income for agent in self.schedule.agents if isinstance(agent, Consumer)]
             
         self.total_waste = 0
-        self.total_yearly_new_products = 0
-        self.consumer_used_product = 0
-        self.yearly_repaired_waste = 0
+        # self.total_yearly_new_products = 0
+        # self.consumer_used_product = 0
+        # self.yearly_repaired_waste = 0
         
-        self.dynamic_product_average_wght = \
-            self.average_mass_per_function_model(self.copy_total_number_product)
-        # Collect data
-        self.datacollector.collect(self)
+        # self.dynamic_product_average_wght = \
+        #     self.average_mass_per_function_model(self.copy_total_number_product)
+        # # Collect data
+        # self.datacollector.collect(self)
     
-        # Refers to agent step function
-        self.update_dynamic_lifetime()
-    
-        self.average_price_per_function_model()
-    
-        self.schedule.step() # 更新income放在schedule里面？
+        # # Refers to agent step function
+        # self.update_dynamic_lifetime()
+
+        # self.average_price_per_function_model()
+   
+        self.schedule.step()
         self.clock = self.clock + 1

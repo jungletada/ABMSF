@@ -73,29 +73,36 @@ class Producers(Agent):
         self.symbiosis = False
         self.self_confidence = np.random.uniform(
             self_confidence_boundaries[0], self_confidence_boundaries[1])
+        
         self.material_produced = self.producer_type()
         self.recycled_material_volume = 0
         self.yearly_recycled_material_volume = 0
         self.recycling_volume = 0
+
         self.recycled_mat_price = np.random.triangular(
-            scd_mat_prices[self.material_produced][0], scd_mat_prices[
-                self.material_produced][2], scd_mat_prices[
-                self.material_produced][1])
+            scd_mat_prices[self.material_produced][0], 
+            scd_mat_prices[self.material_produced][2], 
+            scd_mat_prices[self.material_produced][1])
+        
         self.virgin_mat_prices = np.random.triangular(
-            virgin_mat_prices[self.material_produced][0], virgin_mat_prices[
-                self.material_produced][2], virgin_mat_prices[
-                self.material_produced][1])
+            virgin_mat_prices[self.material_produced][0], 
+            virgin_mat_prices[self.material_produced][2], 
+            virgin_mat_prices[self.material_produced][1])
+        
         self.all_virgin_mat_prices = virgin_mat_prices
         self.recycled_material_value = 0
+
         self.industrial_waste = {
             k: self.model.material_waste_ratio[k] *
             self.model.product_mass_fractions[k] *
             self.model.dynamic_product_average_wght
-            for k in self.model.material_waste_ratio}
+                for k in self.model.material_waste_ratio}
+        
         self.industrial_waste_ratio = {
             k: self.model.material_waste_ratio[k] *
-            self.model.product_mass_fractions[k] for k in
-            self.model.material_waste_ratio}
+            self.model.product_mass_fractions[k] 
+                for k in self.model.material_waste_ratio}
+        
         self.industrial_waste_generated = 0
         self.yearly_industrial_waste_generated = 0
         self.producer_costs = 0
@@ -147,6 +154,7 @@ class Producers(Agent):
                               self.model.social_event_boundaries[1],
                               (self.model.num_prod_n_recyc,
                                self.model.num_prod_n_recyc)))
+        
         for agent in self.model.schedule.agents: # agent: Producers
             if self.model.num_consumers <= agent.unique_id < self.model.num_consumers + self.model.num_prod_n_recyc:
                 agent_j = agent.unique_id - self.model.num_consumers
