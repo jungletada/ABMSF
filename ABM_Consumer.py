@@ -44,7 +44,7 @@ class Consumer(Agent):
             self,
             model,
             unique_id,
-            init_pathway_choice='new',
+            init_purchase_dist=0.35,
             max_time_hoard=60):
         """
         Initialize a Consumer agent.
@@ -61,9 +61,10 @@ class Consumer(Agent):
         # To buy or not
         self.decision = None
         self.eol_pathway = None
-        self.pathway_choice = init_pathway_choice
-        self.to_purchase = False
-
+        self.to_purchase = True
+        self.pathway_choice = 'new'
+        # 'used' if random.random() <= init_purchase_dist else 'new'
+        
         self.i_mu = 9
         self.i_sigma = 0.6
         self.income = np.random.lognormal(self.i_mu, self.i_sigma, 1)
@@ -84,14 +85,14 @@ class Consumer(Agent):
         self.weight_pbc_eol = {"repair": 0.005, "resell": 0.01, "recycle": 0.1, "landfill": 0.4425, "hoard": 0.4425}
 
         # column sum up to 1
-        self.weight_att_purchase = {'used': 0.05, 'new': 0.95}
-        self.weight_sn_purchase = {'used': 0.5, 'new': 0.5}
-        self.weight_pbc_purchase = {'used': 0.5, 'new': 0.5}
+        self.weight_att_purchase = {'used': 0.5, 'new': 0.5}
+        self.weight_sn_purchase = {'used': 0.25, 'new': 0.25}
+        self.weight_pbc_purchase = {'used': 0.25, 'new': 0.25}
 
         self.eol_pathway_choices = ["repair", "resell", "recycle", "landfill", "hoard"]
         self.purchase_choices = ["used", "new"]
 
-        self.pbc_costs_purchase = {'used': 2000, 'new': 4000}
+        self.pbc_costs_purchase = {'used': 3000, 'new': 4000}
         self.pbc_costs_eol = {"repair": 0.005, "resell": 0.01, "recycle": 0.1, "landfill": 0.4425, "hoard": 0.4425} 
 
         self.behavior_intention = {}
@@ -115,7 +116,7 @@ class Consumer(Agent):
         probabilities = self.income / np.sum(self.model.all_comsumer_income)  # Wealthier individuals get larger share
         self.income += growth_rate * increments * probabilities
 
-    def tpb_attitude(self, decision, att_level_reuse, weight_att):
+    def tpb_attitude(self, decision, att_level_env, weight_att):
         """
         Calculate pro-environmental attitude component of EoL TPB rule. Options
         considered pro environmental get a higher score than other options.
@@ -131,17 +132,18 @@ class Consumer(Agent):
         if decision == "eol_pathway":
             for i, pathway in enumerate(self.eol_pathway_choices):
                 if pathway in ["repair", "resell", "recycle"]:
-                    att_level_ratios[pathway] = att_level_reuse * weight_att[pathway]
+                    att_level_ratios[pathway] = att_level_env * weight_att[pathway]
                 else:
-                    att_level_ratios[pathway] = (1 - att_level_reuse) * weight_att[pathway]
+                    att_level_ratios[pathway] = (1 - att_level_env) * weight_att[pathway]
         
         elif decision == "purchase_choice":
             for i, pathway in enumerate(self.purchase_choices):
-                if self.purchase_choices[i] == "used":
-                    att_level_ratios[pathway] = att_level_reuse * weight_att[pathway]
+                if self.purchase_choices[i] == 'used':
+                    purchase_ratio = self.pbc_costs_purchase['used'] / (self.income)
+                    att_level_ratios[pathway] = max(att_level_env - purchase_ratio, 0) * weight_att[pathway]
                 else:
-                    att_level_ratios[pathway] = (1 - att_level_reuse) * weight_att[pathway]
-        
+                    purchase_ratio = self.pbc_costs_purchase['new'] / (self.income)
+                    att_level_ratios[pathway] = max(1 - att_level_env - purchase_ratio, 0) * weight_att[pathway]
         return att_level_ratios
 
     def tpb_subjective_norm(self, decision, weight_sn):
@@ -155,7 +157,7 @@ class Consumer(Agent):
         Calculate subjective norm (peer pressure) component of TPB rule
         """
         neighbor_agents = self.model.grid.get_neighbors(
-            self.pos, include_center=False, radius=5)
+            self.pos, include_center=False, radius=1)
         neighbor_agents = [agent for agent in neighbor_agents if isinstance(agent, Consumer)]
         proportion_sn = {}
         if decision == "eol_pathway":
@@ -164,8 +166,11 @@ class Consumer(Agent):
             list_choices = self.purchase_choices
             
         for choice in list_choices:
+            # for agent in neighbor_agents:
+            #     print(f'I am {self.unique_id}, Neighbour: {agent.pathway_choice}')
             proportion_choice = sum(1 for agent in neighbor_agents
-                                    if getattr(agent, 'pathway_choice') == choice) / len(neighbor_agents)
+                                    if agent.pathway_choice == choice) / len(neighbor_agents)
+            # print(choice, proportion_choice)
             proportion_sn[choice] = proportion_choice * weight_sn[choice]
         return proportion_sn
 
@@ -214,7 +219,7 @@ class Consumer(Agent):
         # Pro-environmental attitude
         att_values = self.tpb_attitude(
             decision=decision,
-            att_level_reuse=att_level_reuse,
+            att_level_env=att_level_reuse,
             weight_att=weight_att)
         
         if decision == "eol_pathway":
@@ -255,7 +260,7 @@ class Consumer(Agent):
         self.repair_cost = self.smartphone.calculate_repair_cost() # repair cost need to be paid by consumer
         self.resell_cost = -self.smartphone.calculate_resell_price() # reresell cost is paid by second-hand store
         self.recycle_cost = -self.smartphone.calculate_recycle_price() # recycle cost is paid by second-hand store
-        self.landfill_cost = 0
+        self.landfill_cost = 10
         self.hoard_cost = 0
 
         self.pbc_costs_eol = {
@@ -276,31 +281,35 @@ class Consumer(Agent):
         if self.pathway_choice == "new":
             manufacutrers = [agent for agent in self.model.agents 
                              if isinstance(agent, Manufacturer)]
-            
-            for seller in manufacutrers:
-                if abs(self.income - seller.product_price) < 200:
-                    self.smartphone = seller.trade_with_consumer(
-                        consumer_id=self.unique_id)
-                    print(f'Consumer {self.unique_id} buy a new phone from Producer {seller.unique_id}')
-                    break
+            seller = random.choice(manufacutrers)
+            self.smartphone = seller.trade_with_consumer(consumer_id=self.unique_id)
+            print(f'Consumer {self.unique_id} buy a new phone from Producer {seller.unique_id}')
+            #             consumer_id=self.unique_id)
+            # for seller in manufacutrers:
+            #     if abs(self.income - seller.product_price) < 200:
+            #         self.smartphone = seller.trade_with_consumer(
+            #             consumer_id=self.unique_id)
+            #         print(f'Consumer {self.unique_id} buy a new phone from Producer {seller.unique_id}')
+            #         break
 
-            if self.smartphone is None:
-                min_price = 100000
-                min_price_seller = None
-                for seller in manufacutrers:
-                    if seller.product_price < min_price:
-                        min_price = seller.product_price
-                        min_price_seller = seller
-                self.smartphone = min_price_seller.trade_with_consumer(
-                        consumer_id=self.unique_id)
-                print(f'Consumer {self.unique_id} buy a new phone from Producer {min_price_seller.unique_id}')
+            # if self.smartphone is None:
+            #     min_price = 100000
+            #     min_price_seller = None
+            #     for seller in manufacutrers:
+            #         if seller.product_price < min_price:
+            #             min_price = seller.product_price
+            #             min_price_seller = seller
+            #     self.smartphone = min_price_seller.trade_with_consumer(
+            #             consumer_id=self.unique_id)
+                # print(f'Consumer {self.unique_id} buy a new phone from Producer {min_price_seller.unique_id}')
 
         #======================== Purchase Used Phone ========================#
         elif self.pathway_choice == "used":
             sechdstores = [agent for agent in self.model.agents 
                              if isinstance(agent, SecondHandStore)]
-            # self.smartphone = Smartphone(
-            #     is_new=False, model=self.model, performance=0.95)
+            seller = random.choice(sechdstores)
+            self.smartphone = seller.trade_with_consumer_resell(consumer_id=self.unique_id)
+            print(f'Consumer {self.unique_id} buy a used phone from second-hand store {seller.unique_id}')
 
     def resell_smartphone(self, new_owner_id):
         """
@@ -361,7 +370,7 @@ class Consumer(Agent):
                 weight_sn=self.weight_sn_purchase,
                 weight_pbc=self.weight_pbc_purchase,
                 pbc_costs=self.pbc_costs_purchase,
-                att_level_reuse=0.7)
+                att_level_reuse=float(np.random.normal(0.6, 0.1)))
             
             self.purchase_smartphone()
 
@@ -381,7 +390,7 @@ class Consumer(Agent):
                 weight_sn=self.weight_sn_eol,
                 weight_pbc=self.weight_pbc_eol,
                 pbc_costs=self.pbc_costs_eol,
-                att_level_reuse=0.2)
+                att_level_reuse=float(np.random.normal(0.4, 0.1)))
             
             if self.pathway_choice == "hoard":
                 # update the time held and performance

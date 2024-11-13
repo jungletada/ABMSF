@@ -33,10 +33,11 @@ class SecondHandStore(Agent):
 
     """
 
-    def __init__(self, model, unique_id):
+    def __init__(
+        self, model, unique_id, init_num_used_products=25):
         super().__init__(model)
         self.unique_id = unique_id
-        self.num_used_products = 15
+        self.num_used_products = init_num_used_products
         self.inventory = []
 
         self.initialize_inventory()
@@ -50,8 +51,8 @@ class SecondHandStore(Agent):
         Each smartphone is created with randomized performance and time held values.
         """
         producer_ids = self.model.new_product_id_price.keys()
-        choose_id = random.choice(producer_ids)
-        product_price = self.model.product_id_price[choose_id]
+        choose_id = random.choice(list(producer_ids))
+        product_price = self.model.new_product_id_price[choose_id]
         for _ in range(self.num_used_products):
             self.inventory.append(
                 Smartphone(
@@ -68,20 +69,47 @@ class SecondHandStore(Agent):
                 )
             )
 
-    def trade_with_consumer_buy(self, smartphone):
-        smartphone.repair_product()
-        smartphone.time_held = 0
-        self.inventory.append(smartphone)
-
-    def calculate_sell_price(self, smartphone):
+    def calculate_resell_price(self, smartphone):
         """
+        
         """
+        
         smartphone.calculate_used_market_price()
+        
+    def buy_from_consumer(self, smartphone):
+        """
+        Purchase a used smartphone from a consumer and add it to store inventory.
+        
+        Args:
+            smartphone (Smartphone): The smartphone being sold to the store by the consumer.
+            
+        This function repairs the smartphone, transfers ownership to the store by updating 
+        the smartphone's user_id, and adds it to the store's inventory. The repair is done
+        automatically before adding to inventory to ensure all store stock is in good condition.
+        """
+        smartphone.repair_product()
+        smartphone.user_id = self.unique_id
+        self.inventory.append(smartphone)
     
-    def trade_with_cunsumer_resell(self):
+    def trade_with_consumer_resell(self, consumer_id):
         """
+        Simulate the sale of a used smartphone from the store's inventory to a consumer.
+        
+        Args:
+            consumer_id (int): The unique ID of the consumer purchasing the smartphone.
+            
+        Returns:
+            Smartphone: The smartphone being sold to the consumer, or None if inventory is empty.
+            
+        This function removes a smartphone from the store's inventory and transfers ownership 
+        to the purchasing consumer by updating the smartphone's user_id. If the store's 
+        inventory is empty, returns None to indicate no smartphone is available for sale.
         """
-        pass
+        if len(self.inventory) == 0:
+            return None
+        smartphone = self.inventory.pop(0)
+        smartphone.user_id = consumer_id
+        return smartphone
     
     def step(self):
         for smartphone in self.inventory:

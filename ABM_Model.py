@@ -509,13 +509,11 @@ class Smartphone_MODEL(Model):
         # Create agents, G nodes labels are equal to agents' unique_ID
         for node in self.network.nodes():
             #===================== Consumers =====================#
-            init_pathway_choice = 'used' \
-                if random.random() < init_consumer_purchase_dist['used'] else 'new'
             if node < self.num_consumers:
                 consumer = Consumer(
                     model=self,     # ABM_Model
                     unique_id=node, # agent ID ~ node ID in the network
-                    init_pathway_choice=init_pathway_choice,
+                    init_purchase_dist=0.1,
                     )
                 self.grid.place_agent(consumer, node)  # Add the agent to the node
                 
