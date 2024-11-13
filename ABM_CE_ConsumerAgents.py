@@ -225,17 +225,17 @@ class Consumers(Agent):
         #print("out func", self.knowledge)
 
     def initial_choice(self, list_choice):
-            """
-            Initiate the EoL pathway and purchase choice chosen by agents.
-            """
-            total = 0
-            u_id = self.model.list_consumer_id[self.unique_id]
-            for key, value in list_choice.items():
-                # EoL=repair, sell, recycle, landfill, hoard
-                # Purchase=used, new
-                total += value * self.model.num_consumers
-                if u_id <= (total - 1):
-                    return key
+        """
+        Initiate the EoL pathway and purchase choice chosen by agents.
+        """
+        total = 0
+        u_id = self.model.list_consumer_id[self.unique_id]
+        for key, value in list_choice.items():
+            # EoL=repair, sell, recycle, landfill, hoard
+            # Purchase=used, new
+            total += value * self.model.num_consumers
+            if u_id <= (total - 1):
+                return key
        
     def mass_per_function_model(self, product_as_function):
         """
@@ -315,7 +315,7 @@ class Consumers(Agent):
         distribution = truncnorm((0 - loc) / scale, (1 - loc) / scale, loc, scale)
         knowledge_level = float(distribution.rvs(1))
         knowledge_eol = [knowledge_level, knowledge_level, knowledge_level, 0, 0]
-        knowledge_eol = [self.model.extended_tpb["w_knowledge"] * x 
+        knowledge_eol = [self.model.extended_tpb["w_knowledge"] * x
                          for x in knowledge_eol]
         return knowledge_eol
 

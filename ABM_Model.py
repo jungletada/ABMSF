@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import networkx as nx
 
 from mesa import Model
-# from mesa import AgentSet
 from mesa.space import NetworkGrid
 from mesa.datacollection import DataCollector
 
@@ -19,7 +18,6 @@ from ABM_Manufacturer import Manufacturer
 
 class Smartphone_MODEL(Model):
     """
-
     Attributes:
         seed (to fix random numbers), (default=None). Modeler's choice.
         calibration_n_sensitivity1 (use to vary list parameters or
@@ -181,133 +179,135 @@ class Smartphone_MODEL(Model):
 
     """
 
-    def __init__(self,
-                 seed=None,
-                 calibration_n_sensitivity=1,
-                 calibration_n_sensitivity_2=1,
-                 num_consumers=1000,
-                 consumers_node_degree=10,
-                 consumers_network_type="small-world",
-                 rewiring_prob=0.1,
-                 num_recyclers=15,
-                 num_producers=10,
-                 prod_n_recyc_node_degree=5,
-                 prod_n_recyc_network_type="small-world",
-                 num_sechdstores=30,
-                 consumers_distribution={"residential": 1, "commercial": 0., "utility": 0.},
-                 init_eol_rate={"repair": 0.005, "sell": 0.01, "recycle": 0.1, "landfill": 0.4425, "hoard": 0.4425},
-                 init_purchase_rate={"new": 0.9995, "used": 0.0005},
-                 total_number_product=[38, 38, 38, 38, 38, 38, 38, 139, 251,
-                                       378, 739, 1670, 2935, 4146, 5432, 6525,
-                                       3609, 4207, 4905, 5719],
-                 product_distribution={"residential": 1, "commercial": 0., "utility": 0.},
-                 product_growth=[0.166, 0.045],
-                 growth_threshold=10,
-                 failure_rate_alpha=[2.4928, 5.3759, 3.93495],
-                 hoarding_cost=[0, 0.001, 0.0005],
-                 landfill_cost=[
-                     0.0089, 0.0074, 0.0071, 0.0069, 0.0056, 0.0043,
-                     0.0067, 0.0110, 0.0085, 0.0082, 0.0079, 0.0074, 0.0069,
-                     0.0068, 0.0068, 0.0052, 0.0052, 0.0051, 0.0074, 0.0062,
-                     0.0049, 0.0049, 0.0047, 0.0032, 0.0049, 0.0065, 0.0064,
-                     0.0062, 0.0052, 0.0048, 0.0048, 0.0044, 0.0042, 0.0039,
-                     0.0039, 0.0045, 0.0055, 0.0050, 0.0049, 0.0044, 0.0044,
-                     0.0039, 0.0033, 0.0030, 0.0041, 0.0050, 0.0040, 0.0040,
-                     0.0038, 0.0033],
-                 theory_of_planned_behavior={
-                     "residential": True, "commercial": True, "utility": True},
-                 w_sn_eol=0.27,
-                 w_pbc_eol=0.44,
-                 w_a_eol=0.39,
-                 w_sn_reuse=0.497,
-                 w_pbc_reuse=0.382,
-                 w_a_reuse=0.464,
-                 product_lifetime=30,
-                 all_eol_pathways={"repair": True, "sell": True,
-                                   "recycle": True, "landfill": True,
-                                   "hoard": True},
-                 max_storage=[1, 8, 4],
-                 att_distrib_param_eol=[0.544, 0.1],
-                 att_distrib_param_reuse=[0.223, 0.262],
-                 original_recycling_cost=[0.106, 0.128, 0.117],
-                 recycling_learning_shape_factor=-0.39,
-                 repairability=0.55,
-                 # some modules don't need repair
-                 original_repairing_cost=[0.1, 0.45, 0.23],
-                 # HERE
-                 repairing_learning_shape_factor=-0.31,
-                 scndhand_mkt_pric_rate=[0.4, 0.2],
-                 # from https://www.ise.fraunhofer.de/content/dam/ise/de/
-                 # documents/publications/studies/AgoraEnergiewende_Current_and_
-                 # Future_Cost_of_PV_Feb2015_web.pdf
-                 # a=6.5, b=0.078, y=a*exp(b*-t)
-                 fsthand_mkt_pric=0.45,
-                 #0.04
-                 fsthand_mkt_pric_reg_param=[1, 0.04],
-                 # HERE
-                 refurbisher_margin=[0.4, 0.6, 0.5],
-                 purchase_choices={"new": True, "used": True, "certified": False},
-                 init_trust_boundaries=[-1, 1],
-                 social_event_boundaries=[-1, 1],
-                 social_influencability_boundaries=[0, 1],
-                 trust_threshold=0.5,
-                 knowledge_threshold=0.5,
-                 willingness_threshold=0.5,
-                 self_confidence_boundaries=[0, 1],
-                 product_mass_fractions={"Product": 1, "Aluminum": 0.08,
-                                         "Glass": 0.76, "Copper": 0.01,
-                                         "Insulated cable": 0.012,
-                                         "Silicon": 0.036, "Silver": 0.00032},
-                 established_scd_mkt={"Product": True, "Aluminum": True,
-                                      "Glass": True, "Copper": True,
-                                      "Insulated cable": True,
-                                      "Silicon": False, "Silver": False},
-                 scd_mat_prices={"Product": [np.nan, np.nan, np.nan],
-                                 "Aluminum": [0.66, 1.98, 1.32],
-                                 "Glass": [0.01, 0.06, 0.035],
-                                 "Copper": [3.77, 6.75, 5.75],
-                                 "Insulated cable": [3.22, 3.44, 3.33],
-                                 "Silicon": [2.20, 3.18, 2.69],
-                                 "Silver": [453, 653, 582]},
-                 virgin_mat_prices={"Product": [np.nan, np.nan, np.nan],
-                                 "Aluminum": [1.76, 2.51, 2.14],
-                                 "Glass": [0.04, 0.07, 0.055],
-                                 "Copper": [4.19, 7.50, 6.39],
-                                 "Insulated cable": [3.22, 3.44, 3.33],
-                                 "Silicon": [2.20, 3.18, 2.69],
-                                 "Silver": [453, 653, 582]},
-                 material_waste_ratio={"Product": 0., "Aluminum": 0.,
-                                       "Glass": 0., "Copper": 0.,
-                                       "Insulated cable": 0., "Silicon": 0.4,
-                                       "Silver": 0.},
-                 recovery_fractions={"Product": np.nan, "Aluminum": 0.92,
-                                       "Glass": 0.85, "Copper": 0.72,
-                                       "Insulated cable": 1, "Silicon": 0,
-                                       "Silver": 0},
-                 product_average_wght=0.1,
-                 mass_to_function_reg_coeff=0.03,
-                 recycling_states=[
-                     'Texas', 'Arizona', 'Oregon', 'Oklahoma',
-                         'Wisconsin', 'Ohio', 'Kentucky', 'South Carolina'],
-                 transportation_cost=0.0314,
-                 used_product_substitution_rate=[0.6, 1, 0.8],
-                 imperfect_substitution=0,
-                 epr_business_model=False,
-                 recycling_process={"frelp": False, "asu": False,
-                                    "hybrid": False},
-                 industrial_symbiosis=False,
-                 dynamic_lifetime_model={"Dynamic lifetime": False,
-                                         "d_lifetime_intercept": 15.9,
-                                         "d_lifetime_reg_coeff": 0.87,
-                                         "Seed": False, "Year": 5,
-                                         "avg_lifetime": 50},
-                 extended_tpb={"Extended tpb": False,
-                               "w_convenience": 0.28, "w_knowledge": -0.51,
-                               "knowledge_distrib": [0.5, 0.49]},
-                 seeding={"Seeding": False,
-                          "Year": 10, "number_seed": 50},
-                 seeding_recyc={"Seeding": False,
-                          "Year": 10, "number_seed": 50, "discount": 0.35}):
+    def __init__(
+            self,
+            seed=None,
+            calibration_n_sensitivity=1,
+            calibration_n_sensitivity_2=1,
+            num_consumers=1000,
+            consumers_node_degree=10,
+            consumers_network_type="small-world",
+            rewiring_prob=0.1,
+            num_recyclers=15,
+            num_producers=10,
+            prod_n_recyc_node_degree=5,
+            prod_n_recyc_network_type="small-world",
+            num_sechdstores=30,
+            init_consumer_purchase_dist={'used':0.2, 'new':0.8},
+            consumers_distribution={"residential": 1, "commercial": 0., "utility": 0.},
+            init_eol_rate={"repair": 0.005, "sell": 0.01, "recycle": 0.1, "landfill": 0.4425, "hoard": 0.4425},
+            init_purchase_rate={"new": 0.9995, "used": 0.0005},
+            total_number_product=[38, 38, 38, 38, 38, 38, 38, 139, 251,
+                                378, 739, 1670, 2935, 4146, 5432, 6525,
+                                3609, 4207, 4905, 5719],
+            product_distribution={"residential": 1, "commercial": 0., "utility": 0.},
+            product_growth=[0.166, 0.045],
+            growth_threshold=10,
+            failure_rate_alpha=[2.4928, 5.3759, 3.93495],
+            hoarding_cost=[0, 0.001, 0.0005],
+            landfill_cost=[
+                0.0089, 0.0074, 0.0071, 0.0069, 0.0056, 0.0043,
+                0.0067, 0.0110, 0.0085, 0.0082, 0.0079, 0.0074, 0.0069,
+                0.0068, 0.0068, 0.0052, 0.0052, 0.0051, 0.0074, 0.0062,
+                0.0049, 0.0049, 0.0047, 0.0032, 0.0049, 0.0065, 0.0064,
+                0.0062, 0.0052, 0.0048, 0.0048, 0.0044, 0.0042, 0.0039,
+                0.0039, 0.0045, 0.0055, 0.0050, 0.0049, 0.0044, 0.0044,
+                0.0039, 0.0033, 0.0030, 0.0041, 0.0050, 0.0040, 0.0040,
+                0.0038, 0.0033],
+            theory_of_planned_behavior={
+                "residential": True, "commercial": True, "utility": True},
+            w_sn_eol=0.27,
+            w_pbc_eol=0.44,
+            w_a_eol=0.39,
+            w_sn_reuse=0.497,
+            w_pbc_reuse=0.382,
+            w_a_reuse=0.464,
+            product_lifetime=30,
+            all_eol_pathways={"repair": True, "sell": True,
+                            "recycle": True, "landfill": True,
+                            "hoard": True},
+            max_storage=[1, 8, 4],
+            att_distrib_param_eol=[0.544, 0.1],
+            att_distrib_param_reuse=[0.223, 0.262],
+            original_recycling_cost=[0.106, 0.128, 0.117],
+            recycling_learning_shape_factor=-0.39,
+            repairability=0.55,
+            # some modules don't need repair
+            original_repairing_cost=[0.1, 0.45, 0.23],
+            # HERE
+            repairing_learning_shape_factor=-0.31,
+            scndhand_mkt_pric_rate=[0.4, 0.2],
+            # from https://www.ise.fraunhofer.de/content/dam/ise/de/
+            # documents/publications/studies/AgoraEnergiewende_Current_and_
+            # Future_Cost_of_PV_Feb2015_web.pdf
+            # a=6.5, b=0.078, y=a*exp(b*-t)
+            fsthand_mkt_pric=0.45,
+            #0.04
+            fsthand_mkt_pric_reg_param=[1, 0.04],
+            # HERE
+            refurbisher_margin=[0.4, 0.6, 0.5],
+            purchase_choices={"new": True, "used": True, "certified": False},
+            init_trust_boundaries=[-1, 1],
+            social_event_boundaries=[-1, 1],
+            social_influencability_boundaries=[0, 1],
+            trust_threshold=0.5,
+            knowledge_threshold=0.5,
+            willingness_threshold=0.5,
+            self_confidence_boundaries=[0, 1],
+            product_mass_fractions={"Product": 1, "Aluminum": 0.08,
+                                    "Glass": 0.76, "Copper": 0.01,
+                                    "Insulated cable": 0.012,
+                                    "Silicon": 0.036, "Silver": 0.00032},
+            established_scd_mkt={"Product": True, "Aluminum": True,
+                                "Glass": True, "Copper": True,
+                                "Insulated cable": True,
+                                "Silicon": False, "Silver": False},
+            scd_mat_prices={"Product": [np.nan, np.nan, np.nan],
+                            "Aluminum": [0.66, 1.98, 1.32],
+                            "Glass": [0.01, 0.06, 0.035],
+                            "Copper": [3.77, 6.75, 5.75],
+                            "Insulated cable": [3.22, 3.44, 3.33],
+                            "Silicon": [2.20, 3.18, 2.69],
+                            "Silver": [453, 653, 582]},
+            virgin_mat_prices={"Product": [np.nan, np.nan, np.nan],
+                            "Aluminum": [1.76, 2.51, 2.14],
+                            "Glass": [0.04, 0.07, 0.055],
+                            "Copper": [4.19, 7.50, 6.39],
+                            "Insulated cable": [3.22, 3.44, 3.33],
+                            "Silicon": [2.20, 3.18, 2.69],
+                            "Silver": [453, 653, 582]},
+            material_waste_ratio={"Product": 0., "Aluminum": 0.,
+                                "Glass": 0., "Copper": 0.,
+                                "Insulated cable": 0., "Silicon": 0.4,
+                                "Silver": 0.},
+            recovery_fractions={"Product": np.nan, "Aluminum": 0.92,
+                                "Glass": 0.85, "Copper": 0.72,
+                                "Insulated cable": 1, "Silicon": 0,
+                                "Silver": 0},
+            product_average_wght=0.1,
+            mass_to_function_reg_coeff=0.03,
+            recycling_states=[
+                'Texas', 'Arizona', 'Oregon', 'Oklahoma',
+                    'Wisconsin', 'Ohio', 'Kentucky', 'South Carolina'],
+            transportation_cost=0.0314,
+            used_product_substitution_rate=[0.6, 1, 0.8],
+            imperfect_substitution=0,
+            epr_business_model=False,
+            recycling_process={"frelp": False, "asu": False,
+                            "hybrid": False},
+            industrial_symbiosis=False,
+            dynamic_lifetime_model={"Dynamic lifetime": False,
+                                    "d_lifetime_intercept": 15.9,
+                                    "d_lifetime_reg_coeff": 0.87,
+                                    "Seed": False, "Year": 5,
+                                    "avg_lifetime": 50},
+            extended_tpb={"Extended tpb": False,
+                        "w_convenience": 0.28, "w_knowledge": -0.51,
+                        "knowledge_distrib": [0.5, 0.49]},
+            seeding={"Seeding": False,
+                    "Year": 10, "number_seed": 50},
+            seeding_recyc={"Seeding": False,
+                    "Year": 10, "number_seed": 50, "discount": 0.35}):
         """
         Initiate model
         """
@@ -352,8 +352,8 @@ class Smartphone_MODEL(Model):
         self.fsthand_mkt_pric = fsthand_mkt_pric                        #### delete
         self.fsthand_mkt_pric_reg_param = fsthand_mkt_pric_reg_param    #### delete
         
-        self.average_new_product_price = 5000   # TBD
-        self.average_second_hand_price = 2000   # TBD
+        self.avg_new_product_price = 5000   # TBD
+        self.avg_used_product_price = 3000   # TBD
         self.all_comsumer_income = []
         self.repairability = repairability
         
@@ -415,6 +415,7 @@ class Smartphone_MODEL(Model):
         self.list_consumer_id_seed = list(range(num_consumers))
         random.shuffle(self.list_consumer_id_seed)
         
+        self.new_product_id_price = {}
         # Change recovery fractions and recycling costs depending on recycling process
         self.recycling_process_change()
         self.product_growth = product_growth
@@ -508,36 +509,39 @@ class Smartphone_MODEL(Model):
         # Create agents, G nodes labels are equal to agents' unique_ID
         for node in self.network.nodes():
             #===================== Consumers =====================#
+            init_pathway_choice = 'used' \
+                if random.random() < init_consumer_purchase_dist['used'] else 'new'
             if node < self.num_consumers:
-                a = Consumer(
+                consumer = Consumer(
                     model=self,     # ABM_Model
                     unique_id=node, # agent ID ~ node ID in the network
-                    ) 
-                self.grid.place_agent(a, node)  # Add the agent to the node
+                    init_pathway_choice=init_pathway_choice,
+                    )
+                self.grid.place_agent(consumer, node)  # Add the agent to the node
                 
             elif node < self.num_recyclers + self.num_consumers:
                 #===================== Recyclers =====================#
-                b = Recycler(
+                recycler = Recycler(
                     model=self,
-                    unique_id=node, 
+                    unique_id=node,
                     )
-                self.grid.place_agent(b, node)
+                self.grid.place_agent(recycler, node)
 
             elif node < self.num_prod_n_recyc + self.num_consumers:
                 #===================== Producers =====================#
-                c = Manufacturer(
+                manufacturer = Manufacturer(
                     model=self,
-                    unique_id=node, 
+                    unique_id=node,
                     )
-                self.grid.place_agent(c, node)
-
+                self.grid.place_agent(manufacturer, node)
+                self.new_product_id_price[node] = manufacturer.product_price
             else:
                 #================== Second-hand Store ==================#
-                d = SecondHandStore(
+                sechdstore = SecondHandStore(
                     model=self,
-                    unique_id=node, 
+                    unique_id=node,
                     )
-                self.grid.place_agent(d, node)
+                self.grid.place_agent(sechdstore, node)
 
         # Draw initial graph
         # nx.draw(self.G, with_labels=True)
@@ -765,6 +769,23 @@ class Smartphone_MODEL(Model):
         self.fsthand_mkt_pric = self.fsthand_mkt_pric_reg_param[0] * math.e **(
                 -self.fsthand_mkt_pric_reg_param[1] * (self.clock + correction_year))
 
+    def update_lifetime_market(self):
+        """
+        Calculate and return the average prices for new and used products from manufacturers 
+        and second-hand stores respectively.
+        
+        Returns:
+            tuple: (average new product price, average used product price)
+        """
+        all_manufacturers = self.agents_by_type[Manufacturer]
+        self.avg_new_product_price = all_manufacturers.agg('product_price', np.mean)
+        for agent in all_manufacturers:
+            self.new_product_id_price[agent.unique_id] = agent.product_price
+
+        all_sechdsotres = self.agents_by_type[SecondHandStore]
+        self.avg_used_product_price = all_sechdsotres.agg('avg_product_price', np.mean)
+        # return avg_new_product_price, avg_used_product_price
+
     def count_eol_products(self, condition):
         """
         Count adoption in each end of life pathway. Values are then
@@ -949,25 +970,16 @@ class Smartphone_MODEL(Model):
         # update consumer incomes
         self.all_comsumer_income = [
             agent.income for agent in self.agents if isinstance(agent, Consumer)]
-            
-        self.total_waste = 0
-        # self.total_yearly_new_products = 0
-        # self.consumer_used_product = 0
-        # self.yearly_repaired_waste = 0
         
-        # self.dynamic_product_average_wght = \
-        #     self.average_mass_per_function_model(self.copy_total_number_product)
-        # # Collect data
-        # self.datacollector.collect(self)
-    
-        # # Refers to agent step function
-        # self.update_dynamic_lifetime()
-
-        # self.average_price_per_function_model()
         
         # 各个Agent的先后顺序问题
-        self.agents_by_type[Consumer].shuffle_do('step')
         self.agents_by_type[Manufacturer].shuffle_do('step')
         self.agents_by_type[SecondHandStore].shuffle_do('step')
+
+        self.update_lifetime_market()
+        
+        self.agents_by_type[Consumer].shuffle_do('step')
         self.agents_by_type[Recycler].shuffle_do('step')
 
+        # # Collect data
+        # self.datacollector.collect(self)

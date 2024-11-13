@@ -1,6 +1,6 @@
+import numpy as np
 from mesa import Agent
 from ABM_Smartphone import Smartphone
-import numpy as np
 
 
 class Recycler(Agent):

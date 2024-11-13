@@ -1,16 +1,8 @@
-# -*- coding:utf-8 -*-
-"""
-Created on Wed Nov 20 12:40 2019
-
-@author Julien Walzberg - Julien.Walzberg@nrel.gov
-
-Agent - Producer
-"""
-
-from mesa import Agent
+import random
 import numpy as np
 import networkx as nx
-import random
+from mesa import Agent
+
 from ABM_Smartphone import Smartphone
 
 
@@ -50,20 +42,26 @@ class Manufacturer(Agent):
         
         super().__init__(model)
         self.unique_id = unique_id
-        self.material_weights = material_weights or {'metals':0.45, 'glass':0.32, 'Plastics':0.17, 'Other':0.06}
-        self.virgin_material_price = virgin_material_price or {'metals':1000, 'glass':500, 'Plastics':200, 'Other':350}
-        self.recycled_material_price = recycled_material_price or {'metals':1000, 'glass':500, 'Plastics':200, 'Other':350}
-        self.recycled_percentages = recycled_material_percentages or {'metals':0.5, 'glass':0.1, 'Plastics':0.1, 'Other':0.3}
-        self.demand_limits = material_demand_limits or {'metals':0.5, 'glass':0.1, 'Plastics':0.1, 'Other':0.3}
+        self.material_weights = material_weights or \
+            {'metals':0.45, 'glass':0.32, 'Plastics':0.17, 'Other':0.06}
+        self.virgin_material_price = virgin_material_price or \
+            {'metals':1000, 'glass':500, 'Plastics':200, 'Other':350}
+        self.recycled_material_price = recycled_material_price or \
+            {'metals':1000, 'glass':500, 'Plastics':200, 'Other':350}
+        self.recycled_percentages = recycled_material_percentages or \
+            {'metals':0.5, 'glass':0.1, 'Plastics':0.1, 'Other':0.3}
+        self.demand_limits = material_demand_limits or \
+            {'metals':0.5, 'glass':0.1, 'Plastics':0.1, 'Other':0.3}
         self.stability_goal = 0.4
 
         # For pricing strategy
-        self.product_price = 0
+        self.product_price = 5000
         self.profit_margin = 0.3
         self.demand_elasticity = 0.2
         self.financial_incentive = 0
         self.sigma_fi = 0.05
-        
+        # self.yearly_num_production = 0.3 * len(self.model.agents_by_type[Consumer])
+
         self.cumulative_sales = 0
         self.income = 0
         self.production_cost = 0
@@ -95,18 +93,17 @@ class Manufacturer(Agent):
     def set_product_price(self):
         """
         Calculate the price of the new smartphone based on the key factors.
-
+        根据厂商的手机发售价格，反推生产成本
         Returns:
             float: The price of the new smartphone at time t.
         """
-        # Base price before considering demand elasticity and financial incentives
-        base_price = self.production_cost * (1 + self.profit_margin)
-        # Adjust price for demand elasticity
-        adjusted_price = base_price * (1 + self.demand_elasticity)
-        # Apply financial incentive for recycling (reduce the price)
-        self.product_price = adjusted_price - self.financial_incentive
-
-        return self.product_price
+        # # Base price before considering demand elasticity and financial incentives
+        # base_price = self.production_cost * (1 + self.profit_margin)
+        # # Adjust price for demand elasticity
+        # adjusted_price = base_price * (1 + self.demand_elasticity)
+        # # Apply financial incentive for recycling (reduce the price)
+        # self.product_price = adjusted_price - self.financial_incentive
+        self.product_price = 5000
 
     def trade_with_consumer(self, consumer_id):
         """
@@ -128,7 +125,8 @@ class Manufacturer(Agent):
             model=self.model,
             performance=1,
             time_held=0,
-            purchase_price=self.product_price,
+            product_price=self.product_price,
+            producer_id=self.unique_id,
             user_id=consumer_id)
         self.cumulative_sales += 1
         return smartphone

@@ -1,23 +1,27 @@
 import random
 import math
+from mesa import Agent
+
 
 # Newly add:
 #   model.num_handled_phones
 #   model.initial_phones_handled
 
 
-class Smartphone:
+class Smartphone(Agent):
     """Represents a smartphone in the agent-based model simulation."""
-    def __init__(self,
-                 is_new,
-                 model,
-                 performance=1.0,
-                 time_held=0,
-                 purchase_price=1000,
-                 demand_used=0.3,
-                 initial_repair_cost=500.0,
-                 decay_rate=0.1,
-                 user_id=None):
+    def __init__(
+            self,
+            model,
+            is_new,
+            producer_id=None,
+            user_id=None,
+            performance=1.0,
+            time_held=0,
+            demand_used=0.3,
+            product_price=5000,
+            initial_repair_cost=500.0,
+            decay_rate=0.1):
         """
         Initialize a Smartphone instance.
 
@@ -33,22 +37,25 @@ class Smartphone:
             decay_rate (float): The rate at which the performance degrades over time (exponential decay).
             user_id (int/None): ID of the current user who holds the phone (could be a consumer or second-hand store).
         """
-        self.model = model
+        super().__init__(model)
         self.is_new = is_new # True：new smartphone; False: used smartphone
         self.performance = performance  # Range from 0 to 1, where 1 is perfect condition
         self.time_held = time_held  # Number of time units (e.g., months or years) held by the user
-        
-        self.purchase_price = purchase_price  # Purchase price from the new market
+        self.producer_id = producer_id # 
+        self.user_id = user_id  # ID of the current user holding this phone
+
+        self.purchase_price = product_price  # Purchase price from the new market
         self.repair_cost = 0  # Repair cost if the phone is broken
         self.resell_price = 0
         self.used_market_price = 0
         self.recycle_price = 0
-        self.initial_repair_cost = initial_repair_cost # Initial repair cost for second-hand store and recycler.
-        
-        self.user_id = user_id  # ID of the current user holding this phone
-        self.decay_rate = decay_rate # Rate at which the performance degrades (lambda in the exponential decay model)
+        # Initial repair cost for second-hand store and recycler.
+        self.initial_repair_cost = initial_repair_cost 
+
+        # Rate at which the performance degrades (lambda in the exponential decay model)
+        self.decay_rate = decay_rate
         self.demand_used = demand_used
-        
+
         self.material_value = 500 # material_value depends on the ingredients of product.
 
         # Additional attributes
@@ -92,7 +99,7 @@ class Smartphone:
         """
         if self.time_held < self.warranty_duration:  # Phone is under warranty
             self.repair_cost = 0  # Free repair under warranty (or set to a very low cost)
-            print(f"Phone is under warranty. Repair cost: {self.repair_cost}")
+            # print(f"Phone is under warranty. Repair cost: {self.repair_cost}")
         
         else:  # Phone is out of warranty, calculate repair cost based on performance and learning effect
             epsilon = 0.5
@@ -103,7 +110,7 @@ class Smartphone:
             # learning_factor = self.initial_repair_cost * (self.model.num_handled_phones / max(1, self.model.initial_phones_handled))
             self.repair_cost = basic_repair_cost #+ epsilon * learning_factor
             # print(f"Phone is out of warranty. Repair cost with learning effect: {self.repair_cost:.2f}")
-            return self.repair_cost
+        return self.repair_cost
     
     def repair_product(self):
         """

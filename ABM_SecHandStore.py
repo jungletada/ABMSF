@@ -1,8 +1,11 @@
-from mesa import Agent
-import numpy as np
-from ABM_CE_RecyclerAgents import Recyclers
+import random
 import operator
+import numpy as np
 from scipy.stats import truncnorm
+
+from mesa import Agent
+
+from ABM_Smartphone import Smartphone
 
 
 class SecondHandStore(Agent):
@@ -33,13 +36,39 @@ class SecondHandStore(Agent):
     def __init__(self, model, unique_id):
         super().__init__(model)
         self.unique_id = unique_id
-        self.stocks = []
+        self.num_used_products = 15
+        self.inventory = []
+
+        self.initialize_inventory()
+
+        self.avg_product_price = 0
         self.max_time_held = 36
+
+    def initialize_inventory(self):
+        """
+        Initialize the store's inventory with a set number of used smartphones.
+        Each smartphone is created with randomized performance and time held values.
+        """
+        for _ in range(self.num_used_products):
+            self.inventory.append(
+                Smartphone(
+                    model=self.model,
+                    is_new=False,
+                    producer_id=self.model.product_id_price['id'],
+                    user_id=self.unique_id,
+                    performance=random.uniform(0.7, 1),
+                    time_held=random.randint(0, 24),
+                    demand_used=0.3,
+                    product_price=self.model.product_id_price['price'],
+                    initial_repair_cost=500,
+                    decay_rate=0.1
+                )
+            )
 
     def trade_with_consumer_buy(self, smartphone):
         smartphone.repair_product()
         smartphone.time_held = 0
-        self.stocks.append(smartphone)
+        self.inventory.append(smartphone)
 
     def calculate_sell_price(self, smartphone):
         """
@@ -52,10 +81,10 @@ class SecondHandStore(Agent):
         pass
     
     def step(self):
-        for smartphone in self.stocks:
+        for smartphone in self.inventory:
             smartphone.update_time_held()
             if smartphone.time_held >= self.max_time_held:
                 # random pick a recycler
                 # smartphone.recycle_product(new_owner_id)
-                self.stocks.remove(smartphone)
+                self.inventory.remove(smartphone)
         # print(f"SecondHandStore {self.unique_id} doing.")
