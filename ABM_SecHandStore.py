@@ -49,17 +49,20 @@ class SecondHandStore(Agent):
         Initialize the store's inventory with a set number of used smartphones.
         Each smartphone is created with randomized performance and time held values.
         """
+        producer_ids = self.model.new_product_id_price.keys()
+        choose_id = random.choice(producer_ids)
+        product_price = self.model.product_id_price[choose_id]
         for _ in range(self.num_used_products):
             self.inventory.append(
                 Smartphone(
                     model=self.model,
                     is_new=False,
-                    producer_id=self.model.product_id_price['id'],
+                    producer_id=choose_id,
                     user_id=self.unique_id,
                     performance=random.uniform(0.7, 1),
                     time_held=random.randint(0, 24),
                     demand_used=0.3,
-                    product_price=self.model.product_id_price['price'],
+                    product_price=product_price,
                     initial_repair_cost=500,
                     decay_rate=0.1
                 )
