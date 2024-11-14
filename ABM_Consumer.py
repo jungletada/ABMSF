@@ -283,7 +283,7 @@ class Consumer(Agent):
                              if isinstance(agent, Manufacturer)]
             seller = random.choice(manufacutrers)
             self.smartphone = seller.trade_with_consumer(consumer_id=self.unique_id)
-            print(f'Consumer {self.unique_id} buy a new phone from Producer {seller.unique_id}')
+            # print(f'Consumer {self.unique_id} buy a new phone from Producer {seller.unique_id}')
             #             consumer_id=self.unique_id)
             # for seller in manufacutrers:
             #     if abs(self.income - seller.product_price) < 200:
@@ -309,16 +309,17 @@ class Consumer(Agent):
                              if isinstance(agent, SecondHandStore)]
             seller = random.choice(sechdstores)
             self.smartphone = seller.trade_with_consumer_resell(consumer_id=self.unique_id)
-            print(f'Consumer {self.unique_id} buy a used phone from second-hand store {seller.unique_id}')
+            # print(f'Consumer {self.unique_id} buy a used phone from second-hand store {seller.unique_id}')
 
-    def resell_smartphone(self, new_owner_id):
+    def resell_smartphone(self):
         """
         Simulate the reselling of the smartphone.
         """
         sechdstores = [agent for agent in self.model.agents 
                              if isinstance(agent, SecondHandStore)]
-        self.smartphone.resell_product(new_owner_id)
-        # self.model.second_market
+        seller = random.choice(sechdstores)
+        seller.buy_from_consumer(self.smartphone)
+        self.smartphone = None
         # 更改产品的所有权
         self.smartphone = None
         # print(f"Consumer {self.consumer_id} sold their smartphone.")

@@ -37,7 +37,8 @@ class Recycler(Agent):
         self.recycle_number_now = 0
         self.cumulative_recycle_number = 0
         self.recycle_waste = 0
-
+        self.sechdstore_partner = []
+        self.customers = []
         self.material_weights = material_weights
         self.virgin_material_price = virgin_material_price
         self.quality_factor = quality_factor
@@ -48,13 +49,26 @@ class Recycler(Agent):
             self.recycled_material_price[material] = \
                 self.quality_factor[material] * self.virgin_material_price[material]
 
-    def trade_with_consumer_recycle(self, smartphone: Smartphone):
+    def trade_with_consumer_recycle(self, smartphone: Smartphone, consumer_id:int):
         """
 
         """
         recycle_price = smartphone.calculate_recycle_price()
         self.recycle_number_now += 1
+        self.customers.append(consumer_id)
         return recycle_price
+   
+    def recycle_from_secondhand(self, smartphone: Smartphone, sechdstore_id:int):
+        """
+        Recycle a smartphone from the second-hand market.
+        """
+        # Recycle the smartphone and update the recycle number
+        self.recycle_number_now += 1
+        # Update the recycle cost
+        self.recyclering_cost += smartphone.calculate_recycle_price()
+        self.sechdstore_partner.append(sechdstore_id)
+        # Update the recycle waste
+        self.update_recycle_waste(mce=0.5)
    
     def update_recycle_waste(self, mce):
         """

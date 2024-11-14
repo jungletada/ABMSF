@@ -2,10 +2,10 @@ import random
 import operator
 import numpy as np
 from scipy.stats import truncnorm
-
 from mesa import Agent
 
 from ABM_Smartphone import Smartphone
+from ABM_Recycler import Recycler
 
 
 class SecondHandStore(Agent):
@@ -39,7 +39,8 @@ class SecondHandStore(Agent):
         self.unique_id = unique_id
         self.num_used_products = init_num_used_products
         self.inventory = []
-
+        self.repair_cost = 0
+        self.customer = []
         self.initialize_inventory()
 
         self.avg_product_price = 0
@@ -76,7 +77,7 @@ class SecondHandStore(Agent):
         
         smartphone.calculate_used_market_price()
         
-    def buy_from_consumer(self, smartphone):
+    def buy_from_consumer(self, smartphone, consumer_id):
         """
         Purchase a used smartphone from a consumer and add it to store inventory.
         
@@ -87,9 +88,13 @@ class SecondHandStore(Agent):
         the smartphone's user_id, and adds it to the store's inventory. The repair is done
         automatically before adding to inventory to ensure all store stock is in good condition.
         """
-        smartphone.repair_product()
-        smartphone.user_id = self.unique_id
-        self.inventory.append(smartphone)
+        smartphone.repair_product() # repair the used smartphone for reselling
+        self.repair_cost += smartphone.calculate_repair_cost() # update the repairing cost
+        smartphone.user_id = self.unique_id # change the owner
+        smartphone.calculate_used_market_price() # decide the used product price
+        self.inventory.append(smartphone) # add to the inventory
+        self.customer.append(consumer_id)
+        print(f'Second Market Trade: before {consumer_id}, after { smartphone.user_id}')
     
     def trade_with_consumer_resell(self, consumer_id):
         """
@@ -107,15 +112,29 @@ class SecondHandStore(Agent):
         """
         if len(self.inventory) == 0:
             return None
-        smartphone = self.inventory.pop(0)
+        smartphone = self.inventory.pop(0) # 此处是弹出第一个手机
         smartphone.user_id = consumer_id
         return smartphone
     
+    def send_to_recycler(self, smartphone):
+        """
+        """
+        recyclers = [agent for agent in self.model.agents 
+                             if isinstance(agent, Recycler)]
+        trader = random.choice(recyclers)
+        #######################
+        ## Trade with Recycler
+        #######################
+        trader.recycle_from_secondhand(smartphone, self.unique_id)
+        print(f'Second Market Trade: before {self.unique_id}, after { smartphone.user_id}')
+        
+        
     def step(self):
         for smartphone in self.inventory:
             smartphone.update_time_held()
             if smartphone.time_held >= self.max_time_held:
                 # random pick a recycler
                 # smartphone.recycle_product(new_owner_id)
+                self.send_to_recycler(smartphone)
                 self.inventory.remove(smartphone)
         # print(f"SecondHandStore {self.unique_id} doing.")

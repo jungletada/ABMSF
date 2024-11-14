@@ -159,12 +159,6 @@ class Smartphone(Agent):
         self.used_market_price = max(0, adjusted_selling_price)
         return self.used_market_price  # Ensure that the price is non-negative
 
-    def resell_product(self, new_owner_id):
-        """
-        Resell the smartphone the second-hand store
-        """
-        self.user_id = new_owner_id  # Update the user ID to the new owner
-
     def calculate_recycle_price(self):
         """
         Calculate the recycled price for a used smartphone based on recoverable material value.
