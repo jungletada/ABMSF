@@ -111,10 +111,12 @@ class Consumer(Agent):
             sigma (float): Standard deviation of the log-normal distribution.
             growth_rate (float): Overall income growth rate.
         """
-        increments = np.random.lognormal(self.i_mu, self.i_sigma, 1)  # Income increments
-        # Matthew effect: allocate increments more likely to wealthier individuals
-        probabilities = self.income / np.sum(self.model.all_comsumer_income)  # Wealthier individuals get larger share
-        self.income += growth_rate * increments * probabilities
+        if self.model.steps % 12 == 0 and self.model.steps != 0:
+            increments = np.random.lognormal(self.i_mu, self.i_sigma, 1)  # Income increments
+            # Matthew effect: allocate increments more likely to wealthier individuals
+            probabilities = self.income / np.sum(self.model.all_comsumer_income)  # Wealthier individuals get larger share
+            self.income += growth_rate * increments * probabilities
+            self.income = math.ceil(self.income)
 
     def tpb_attitude(self, decision, att_level_env, weight_att):
         """
@@ -192,15 +194,17 @@ class Consumer(Agent):
         # PBC for purchasing smartphones
         max_cost = max(abs(i) for i in pbc_costs.values())
         if decision == "purchase_choice":
-            return {key: -1 * value / max_cost * weight_pbc[key] for key, value in pbc_costs.items()}
+            return {key: -1 * value / max_cost * weight_pbc[key] 
+                        for key, value in pbc_costs.items()}
         
         # PBC for EoL pathways
-        elif decision == "eol_pathway":
-            pbc_eol = {}
-            for key in pbc_costs.keys():
-                pbc_eol[key] = pbc_costs[key] / max_cost
-            max_eol = max(abs(i) for i in pbc_eol.values())
-            return {key: -1 * value / max_eol * weight_pbc[key] for key, value in pbc_eol.items()}
+        pbc_eol = {}
+        for key in pbc_costs.keys():
+            pbc_eol[key] = pbc_costs[key] / max_cost
+        max_eol = max(abs(i) for i in pbc_eol.values())
+        
+        return {key: -1 * value / max_eol * weight_pbc[key] 
+                    for key, value in pbc_eol.items()}
 
     def tpb_decision(self, decision, weight_att, weight_sn, weight_pbc,
                      pbc_costs, att_level_reuse):
@@ -229,13 +233,16 @@ class Consumer(Agent):
             
         self.behavior_intention = {}
         for choice in list_choices:
-            self.behavior_intention[choice] = pbc_values[choice] + sn_values[choice] + att_values[choice]
+            self.behavior_intention[choice] = \
+                pbc_values[choice] + sn_values[choice] + att_values[choice]
             # print(choice, pbc_values[choice], sn_values[choice], att_values[choice])
         
-        self.pathway_choice = max(self.behavior_intention, key=self.behavior_intention.get)
+        self.pathway_choice = max(self.behavior_intention,
+                                key=self.behavior_intention.get)
         
         # If hoarding time >= max_time_hoard, then choose to reresell, recycle or landfill.
-        if self.pathway_choice == "hoard" and self.smartphone.time_held >= self.max_time_hoard: # exceed max_time_hoard
+        if self.pathway_choice == "hoard" and \
+            self.smartphone.time_held >= self.max_time_hoard: # exceed max_time_hoard
             valid_choices = ["resell", "recycle", "landfill"]
             return max(valid_choices, key=lambda k: self.behavior_intention[k])
         
@@ -257,9 +264,12 @@ class Consumer(Agent):
         Calculate and set the costs for different end-of-life options.
         for perceived_behavioral_control in TPB model.
         """
-        self.repair_cost = self.smartphone.calculate_repair_cost() # repair cost need to be paid by consumer
-        self.resell_cost = -self.smartphone.calculate_resell_price() # reresell cost is paid by second-hand store
-        self.recycle_cost = -self.smartphone.calculate_recycle_price() # recycle cost is paid by second-hand store
+        # repair cost need to be paid by consumer
+        self.repair_cost = self.smartphone.calculate_repair_cost()
+        # reresell cost is paid by second-hand store
+        self.resell_cost = -self.smartphone.calculate_resell_price()
+        # recycle cost is paid by second-hand store
+        self.recycle_cost = -self.smartphone.calculate_recycle_price()
         self.landfill_cost = 10
         self.hoard_cost = 0
 
@@ -313,24 +323,23 @@ class Consumer(Agent):
 
     def resell_smartphone(self):
         """
-        Simulate the reselling of the smartphone.
+        Simulate the reselling of the smartphone to the second-hand store.
         """
         sechdstores = [agent for agent in self.model.agents 
-                             if isinstance(agent, SecondHandStore)]
+                            if isinstance(agent, SecondHandStore)]
         seller = random.choice(sechdstores)
         seller.buy_from_consumer(self.smartphone)
         self.smartphone = None
-        # 更改产品的所有权
-        self.smartphone = None
         # print(f"Consumer {self.consumer_id} sold their smartphone.")
 
-    def recycle_smartphone(self, new_owner_id):
+    def recycle_smartphone(self):
         """
         Simulate the recycling of the smartphone.
         """
         recyclers = [agent for agent in self.model.agents 
                              if isinstance(agent, Recycler)]
-        self.smartphone.recycle_product(new_owner_id)
+        trader = random.choice(recyclers)
+        trader.recycle_from_customer(self.smartphone, self.unique_id)
         # 更改产品的所有权
         self.smartphone = None
         # print(f"Consumer {self.consumer_id} recycled their smartphone.")
@@ -339,6 +348,8 @@ class Consumer(Agent):
         """
         Simulate the landfilling of the smartphone.
         """
+        if self.smartphone is not None:
+            self.smartphone.remove()
         self.smartphone = None
         # print(f"Consumer {self.consumer_id} landfilled their smartphone.")
 
@@ -354,9 +365,8 @@ class Consumer(Agent):
         Main simulation step for the consumer.
         """
         # print(f"Consumer {self.unique_id} doing.")
-        if self.model.steps % 12 == 0 and self.model.steps != 0:
-            self.update_income()
-            # print(f"Update Consumer {self.unique_id} with income {self.income}")
+        self.update_income()
+        # print(f"Update Consumer {self.unique_id} with income {self.income}")
         
         # Step 1: Check if the consumer needs a new smartphone and update 'self.to_purchase'
         self.to_purchase = self.smartphone is None
@@ -398,10 +408,10 @@ class Consumer(Agent):
                 self.use_smartphone()
 
             elif self.pathway_choice == "resell":
-                self.resell_smartphone(new_owner_id=None)
+                self.resell_smartphone()
 
             elif self.pathway_choice == "recycle":
-                self.recycle_smartphone(new_owner_id=None)
+                self.recycle_smartphone()
 
             elif self.pathway_choice == "landfill":
                 self.landfill_smartphone()

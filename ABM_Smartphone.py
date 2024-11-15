@@ -47,7 +47,7 @@ class Smartphone(Agent):
         self.purchase_price = product_price  # Purchase price from the new market
         self.repair_cost = 0  # Repair cost if the phone is broken
         self.resell_price = 0
-        self.used_market_price = 0
+        self.secondhand_market_price = 0
         self.recycle_price = 0
         # Initial repair cost for second-hand store and recycler.
         self.initial_repair_cost = initial_repair_cost 
@@ -111,7 +111,7 @@ class Smartphone(Agent):
             self.repair_cost = basic_repair_cost #+ epsilon * learning_factor
             # print(f"Phone is out of warranty. Repair cost with learning effect: {self.repair_cost:.2f}")
         return self.repair_cost
-    
+
     def repair_product(self):
         """
         Attempt to repair the phone with a random chance of success.
@@ -135,11 +135,10 @@ class Smartphone(Agent):
         # Calculate the buying price considering performance, repair cost, and demand
         buying_price = (self.purchase_price * self.performance) * (1 - normalized_repair_cost)
         # Adjust the buying price based on the demand for used phones
-        adjusted_buying_price = buying_price * (1 + self.demand_used)
-        self.resell_price = max(0, adjusted_buying_price)
-        return self.resell_price  # Ensure that the price is non-negative
+        self.resell_price = buying_price * (1 + self.demand_used)
+        return self.resell_price
 
-    def calculate_used_market_price(self):
+    def calculate_secondhand_market_price(self):
         """
         Calculate the selling price for a used smartphone for used product market.
         
@@ -155,9 +154,8 @@ class Smartphone(Agent):
         # Calculate the buying price considering performance, repair cost, and demand
         selling_price = self.purchase_price * self.performance + (1 + normalized_repair_cost)
         # Adjust the buying price based on the demand for used phones
-        adjusted_selling_price = selling_price * (1 + self.demand_used)
-        self.used_market_price = max(0, adjusted_selling_price)
-        return self.used_market_price  # Ensure that the price is non-negative
+        self.secondhand_market_price = selling_price * (1 + self.demand_used)
+        return self.secondhand_market_price
 
     def calculate_recycle_price(self):
         """

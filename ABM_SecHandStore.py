@@ -33,18 +33,18 @@ class SecondHandStore(Agent):
 
     """
 
-    def __init__(
-        self, model, unique_id, init_num_used_products=25):
+    def __init__(self, model, unique_id, init_num_used_products=25):
         super().__init__(model)
         self.unique_id = unique_id
         self.num_used_products = init_num_used_products
         self.inventory = []
         self.repair_cost = 0
-        self.customer = []
-        self.initialize_inventory()
-
+        self.customers = []
         self.avg_product_price = 0
         self.max_time_held = 36
+        self.num_sales = 0
+        self.num_buy_from = 0
+        self.initialize_inventory()
 
     def initialize_inventory(self):
         """
@@ -70,14 +70,7 @@ class SecondHandStore(Agent):
                 )
             )
 
-    def calculate_resell_price(self, smartphone):
-        """
-        
-        """
-        
-        smartphone.calculate_used_market_price()
-        
-    def buy_from_consumer(self, smartphone, consumer_id):
+    def buy_from_consumer(self, smartphone:Smartphone, consumer_id:int):
         """
         Purchase a used smartphone from a consumer and add it to store inventory.
         
@@ -91,12 +84,14 @@ class SecondHandStore(Agent):
         smartphone.repair_product() # repair the used smartphone for reselling
         self.repair_cost += smartphone.calculate_repair_cost() # update the repairing cost
         smartphone.user_id = self.unique_id # change the owner
-        smartphone.calculate_used_market_price() # decide the used product price
+        smartphone.is_new = False
+        smartphone.calculate_secondhand_market_price() # decide the used product price
         self.inventory.append(smartphone) # add to the inventory
-        self.customer.append(consumer_id)
-        print(f'Second Market Trade: before {consumer_id}, after { smartphone.user_id}')
-    
-    def trade_with_consumer_resell(self, consumer_id):
+        self.customers.append(consumer_id)
+        self.num_buy_from += 1
+        # print(f'Second Market Trade: before {consumer_id}, after { smartphone.user_id}')
+
+    def trade_with_consumer_resell(self, consumer_id:int):
         """
         Simulate the sale of a used smartphone from the store's inventory to a consumer.
         
@@ -114,27 +109,48 @@ class SecondHandStore(Agent):
             return None
         smartphone = self.inventory.pop(0) # 此处是弹出第一个手机
         smartphone.user_id = consumer_id
+        self.num_sales += 1
         return smartphone
-    
-    def send_to_recycler(self, smartphone):
+
+    def send_to_recycler(self, smartphone:Smartphone):
         """
+        Send a smartphone from the store's inventory to a recycler.
+        
+        Args:
+            smartphone (Smartphone): The smartphone to be sent for recycling.
+            
+        This function randomly selects a recycler from available recyclers and transfers 
+        the smartphone to them. The recycler will handle the actual recycling process and
+        update the smartphone's ownership status. This is typically called when a smartphone
+        has been in inventory too long (exceeds max_time_held).
         """
-        recyclers = [agent for agent in self.model.agents 
+        recyclers = [agent for agent in self.model.agents
                              if isinstance(agent, Recycler)]
         trader = random.choice(recyclers)
         #######################
         ## Trade with Recycler
         #######################
         trader.recycle_from_secondhand(smartphone, self.unique_id)
-        print(f'Second Market Trade: before {self.unique_id}, after { smartphone.user_id}')
-        
-        
+        # print(f'Second Market Trade: before {self.unique_id}, after { smartphone.user_id}')
+
     def step(self):
+        """
+        Main simulation step for the second-hand store.
+        
+        Updates the time held for all smartphones in inventory and sends phones that have
+        exceeded max_time_held to recyclers. For each smartphone in inventory:
+        - Calls update_time_held() to increment time and degrade performance
+        - If time_held >= max_time_held, sends the phone to a randomly chosen recycler
+          and removes it from inventory
+        """
         for smartphone in self.inventory:
             smartphone.update_time_held()
             if smartphone.time_held >= self.max_time_held:
                 # random pick a recycler
-                # smartphone.recycle_product(new_owner_id)
                 self.send_to_recycler(smartphone)
                 self.inventory.remove(smartphone)
+        # update the every year average product price
+        product_price = [smartphone.secondhand_market_price
+                            for smartphone in self.inventory]
+        self.avg_product_price = np.mean(product_price)
         # print(f"SecondHandStore {self.unique_id} doing.")

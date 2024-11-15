@@ -1,9 +1,11 @@
+import math
 import random
 import numpy as np
 import networkx as nx
 from mesa import Agent
 
 from ABM_Smartphone import Smartphone
+from ABM_Recycler import Recycler
 
 
 class Manufacturer(Agent):
@@ -34,12 +36,13 @@ class Manufacturer(Agent):
             self,
             model,
             unique_id,
+            init_product_price=2999,
             material_weights=None,
             virgin_material_price=None,
             recycled_material_price=None,
             recycled_material_percentages=None,
             material_demand_limits=None):
-        
+
         super().__init__(model)
         self.unique_id = unique_id
         self.material_weights = material_weights or \
@@ -55,55 +58,104 @@ class Manufacturer(Agent):
         self.stability_goal = 0.4
 
         # For pricing strategy
-        self.product_price = 5000
-        self.profit_margin = 0.3
-        self.demand_elasticity = 0.2
+        self.product_price = init_product_price
+        self.profit_margin = random.uniform(0.1, 0.3)
+        self.demand_elasticity = random.uniform(0.02, 0.05)
+        self.cost2price_ratio = random.uniform(0.20, 0.35)
         self.financial_incentive = 0
         self.sigma_fi = 0.05
-        # self.yearly_num_production = 0.3 * len(self.model.agents_by_type[Consumer])
 
+        self.partners = []
         self.cumulative_sales = 0
         self.income = 0
         self.production_cost = 0
 
     def calculate_production_cost(self):
         """
-        Calculate the production cost based on the use of materials.
-        制造商如何决定recycled_percentages?
+        Calculate the production cost based on the use of materials and determine optimal
+        recycled material percentages while staying under max production cost.
+        
         Returns:
             float: Total production cost considering the recycled materials and constraints.
         """
-        production_cost = 0
-        recycled_weight = 0
-        # Calculate production cost and ensure constraints are met
-        for material in self.material_weights.keys():
-            # Calculate cost for this material
-            recycled_material_cost = self.recycled_material_price[material] \
-                * self.recycled_percentages[material] * self.material_weights[material]
-            virgin_material_cost = self.virgin_material_price[material] \
-                * (1 - self.recycled_percentages[material]) * self.material_weights[material]
-            production_cost = recycled_material_cost + virgin_material_cost
-            recycled_weight += self.recycled_percentages[material] * self.material_weights[material]
-        
+        max_production_cost = self.product_price * self.cost2price_ratio
+
+        # Initialize recycled percentages to minimum values
+        self.recycled_percentages = {material: 0.0 for material in self.material_weights}
+
+        # Calculate initial production cost with all virgin materials
+        production_cost = sum(self.virgin_material_price[material] * self.material_weights[material] 
+                                for material in self.material_weights)
+
+        increase_step = 0.05
+        # Iteratively increase recycled content for materials where it reduces cost
+        while production_cost <= max_production_cost:
+            cost_reduction = False
+
+            for material in self.material_weights:
+                # Skip if already at demand limit
+                if self.recycled_percentages[material] >= self.demand_limits[material]:
+                    continue
+
+                # Calculate cost impact of increasing recycled content
+                recycled_part = self.recycled_material_price[material] \
+                    * self.recycled_percentages[material] \
+                    * self.material_weights[material]
+                virgin_part = self.virgin_material_price[material] \
+                    * (1 - self.recycled_percentages[material]) \
+                    * self.material_weights[material]
+                current_cost = recycled_part + virgin_part
+
+                # gradually increase by 5%
+                test_pct = min(self.recycled_percentages[material] + increase_step,
+                               self.demand_limits[material])
+
+                new_recycled_part = self.recycled_material_price[material] \
+                                     * test_pct * self.material_weights[material]
+                new_virgin_part = self.virgin_material_price[material] \
+                                     * (1 - test_pct) * self.material_weights[material]
+                new_cost = new_recycled_part + new_virgin_part
+
+                # If cost decreases, increase recycled percentage
+                if new_cost < current_cost:
+                    production_cost = production_cost - current_cost + new_cost
+                    self.recycled_percentages[material] = test_pct
+                    cost_reduction = True
+
+            # If no material can reduce cost further, stop
+            if not cost_reduction:
+                break
+
+        # Calculate final values
+        recycled_weight = sum(self.recycled_percentages[material] *
+                            self.material_weights[material]
+                            for material in self.material_weights)
+
         self.financial_incentive = self.sigma_fi * recycled_weight
         self.production_cost = production_cost
-        
+
         return self.production_cost
 
-    def set_product_price(self):
+    def set_product_price(self, step):
         """
         Calculate the price of the new smartphone based on the key factors.
-        根据厂商的手机发售价格，反推生产成本
+        Updates price annually (every 12 steps) with a small increase.
+        
+        Args:
+            step (int): Current simulation step (month)
+            
         Returns:
             float: The price of the new smartphone at time t.
         """
-        # # Base price before considering demand elasticity and financial incentives
-        # base_price = self.production_cost * (1 + self.profit_margin)
-        # # Adjust price for demand elasticity
-        # adjusted_price = base_price * (1 + self.demand_elasticity)
-        # # Apply financial incentive for recycling (reduce the price)
-        # self.product_price = adjusted_price - self.financial_incentive
-        self.product_price = 5000
+        # Only update price annually (every 12 steps)
+        if step % 12 == 0 and step != 0:
+            # Calculate price increase (2-5% annually)
+            # Update product price with increase
+            self.product_price *= (1 + self.demand_elasticity)
+            # Add production cost adjustment
+            cost_adjustment = self.production_cost * (1 + self.profit_margin)
+            self.product_price += cost_adjustment
+            self.product_price = math.ceil(self.product_price) # integer price
 
     def trade_with_consumer(self, consumer_id):
         """
@@ -131,24 +183,35 @@ class Manufacturer(Agent):
         self.cumulative_sales += 1
         return smartphone
 
-    def trade_with_recycler(self, recycler_agent):
+    def trade_with_recycler(self):
         """
+        Establish trade with a random recycler to update recycled material prices.
+        
+        Randomly selects a recycler from available agents and updates the manufacturer's
+        recycled material prices based on the trade agreement.
         """
-        self.partner = recycler_agent
+        recyclers = [agent for agent in self.model.agents
+                        if isinstance(agent, Recycler)]
+        trader = random.choice(recyclers)
+        self.recycled_material_price = trader.trade_with_manufacturer()
+        self.partners.append(trader)
 
     def count_income(self):
         """
         Count the income of the producer.
         """
-        self.income = self.product_price * self.cumulative_sales
+        self.income = (self.product_price - self.production_cost) \
+            * self.cumulative_sales
+
         return self.income
 
     def step(self):
         """
         Evolution of agent at each step
         """
+        self.set_product_price(self.model.steps)
         self.calculate_production_cost()
+        self.count_income()
+        print(f'Producer: {self.unique_id}, {self.product_price}')
         # print(f"Manufacturer {self.unique_id}, production cost: {self.production_cost:.2f}")
-        # self.set_product_price()
-        # self.count_income()
         # print(f"Manufacturer {self.unique_id} doing.")

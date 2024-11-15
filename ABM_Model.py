@@ -784,6 +784,14 @@ class Smartphone_MODEL(Model):
         self.avg_used_product_price = all_sechdsotres.agg('avg_product_price', np.mean)
         # return avg_new_product_price, avg_used_product_price
 
+    def update_lifetime_consumer(self):
+        """
+        Update the list of all consumer incomes in the model.
+        """
+        # update consumer incomes
+        self.all_comsumer_income = [
+            agent.income for agent in self.agents if isinstance(agent, Consumer)]
+
     def count_eol_products(self, condition):
         """
         Count adoption in each end of life pathway. Values are then
@@ -965,17 +973,13 @@ class Smartphone_MODEL(Model):
         """
         Advance the model by one step and collect data.
         """
-        # update consumer incomes
-        self.all_comsumer_income = [
-            agent.income for agent in self.agents if isinstance(agent, Consumer)]
-        
-        
         # 各个Agent的先后顺序问题
         self.agents_by_type[Manufacturer].shuffle_do('step')
         self.agents_by_type[SecondHandStore].shuffle_do('step')
 
         self.update_lifetime_market()
-        
+        self.update_lifetime_consumer()
+
         self.agents_by_type[Consumer].shuffle_do('step')
         self.agents_by_type[Recycler].shuffle_do('step')
 
