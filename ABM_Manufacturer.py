@@ -40,28 +40,33 @@ class Manufacturer(Agent):
             material_weights=None,
             virgin_material_price=None,
             recycled_material_price=None,
-            recycled_material_percentages=None,
-            material_demand_limits=None):
+            material_demand_limits=None,):
 
         super().__init__(model)
         self.unique_id = unique_id
+        
         self.material_weights = material_weights or \
             {'metals':0.45, 'glass':0.32, 'Plastics':0.17, 'Other':0.06}
         self.virgin_material_price = virgin_material_price or \
             {'metals':1000, 'glass':500, 'Plastics':200, 'Other':350}
         self.recycled_material_price = recycled_material_price or \
             {'metals':1000, 'glass':500, 'Plastics':200, 'Other':350}
-        self.recycled_percentages = recycled_material_percentages or \
-            {'metals':0.5, 'glass':0.1, 'Plastics':0.1, 'Other':0.3}
+        
+        # Upper bound
         self.demand_limits = material_demand_limits or \
-            {'metals':0.5, 'glass':0.1, 'Plastics':0.1, 'Other':0.3}
-        self.stability_goal = 0.4
+            {'metals':0.25, 'glass':0.1, 'Plastics':0.1, 'Other':0.3}
+        
+        self.recycled_percentages = {}
+
+        # Initialized as the sustainability
+        for k, v in self.demand_limits.items():
+            self.recycled_percentages[k] = v
 
         # For pricing strategy
         self.product_price = init_product_price
         self.profit_margin = random.uniform(0.1, 0.3)
         self.demand_elasticity = random.uniform(0.02, 0.05)
-        self.cost2price_ratio = random.uniform(0.20, 0.35)
+        self.cost2price_ratio = random.uniform(0.20, 0.40)
         self.financial_incentive = 0
         self.sigma_fi = 0.05
 
@@ -78,53 +83,15 @@ class Manufacturer(Agent):
         Returns:
             float: Total production cost considering the recycled materials and constraints.
         """
-        max_production_cost = self.product_price * self.cost2price_ratio
-
-        # Initialize recycled percentages to minimum values
-        self.recycled_percentages = {material: 0.0 for material in self.material_weights}
-
-        # Calculate initial production cost with all virgin materials
-        production_cost = sum(self.virgin_material_price[material] * self.material_weights[material] 
-                                for material in self.material_weights)
-
-        increase_step = 0.05
-        # Iteratively increase recycled content for materials where it reduces cost
-        while production_cost <= max_production_cost:
-            cost_reduction = False
-
-            for material in self.material_weights:
-                # Skip if already at demand limit
-                if self.recycled_percentages[material] >= self.demand_limits[material]:
-                    continue
-
-                # Calculate cost impact of increasing recycled content
-                recycled_part = self.recycled_material_price[material] \
-                    * self.recycled_percentages[material] \
-                    * self.material_weights[material]
-                virgin_part = self.virgin_material_price[material] \
-                    * (1 - self.recycled_percentages[material]) \
-                    * self.material_weights[material]
-                current_cost = recycled_part + virgin_part
-
-                # gradually increase by 5%
-                test_pct = min(self.recycled_percentages[material] + increase_step,
-                               self.demand_limits[material])
-
-                new_recycled_part = self.recycled_material_price[material] \
-                                     * test_pct * self.material_weights[material]
-                new_virgin_part = self.virgin_material_price[material] \
-                                     * (1 - test_pct) * self.material_weights[material]
-                new_cost = new_recycled_part + new_virgin_part
-
-                # If cost decreases, increase recycled percentage
-                if new_cost < current_cost:
-                    production_cost = production_cost - current_cost + new_cost
-                    self.recycled_percentages[material] = test_pct
-                    cost_reduction = True
-
-            # If no material can reduce cost further, stop
-            if not cost_reduction:
-                break
+        for material in self.material_weights:
+            # Calculate cost impact of increasing recycled content
+            recycled_part = self.recycled_material_price[material] \
+                * self.recycled_percentages[material] \
+                * self.material_weights[material]
+            virgin_part = self.virgin_material_price[material] \
+                * (1 - self.recycled_percentages[material]) \
+                * self.material_weights[material]
+            self.production_cost += recycled_part + virgin_part
 
         # Calculate final values
         recycled_weight = sum(self.recycled_percentages[material] *
@@ -132,7 +99,6 @@ class Manufacturer(Agent):
                             for material in self.material_weights)
 
         self.financial_incentive = self.sigma_fi * recycled_weight
-        self.production_cost = production_cost
 
         return self.production_cost
 
@@ -181,6 +147,7 @@ class Manufacturer(Agent):
             producer_id=self.unique_id,
             user_id=consumer_id)
         self.cumulative_sales += 1
+
         return smartphone
 
     def trade_with_recycler(self):
@@ -212,6 +179,6 @@ class Manufacturer(Agent):
         self.set_product_price(self.model.steps)
         self.calculate_production_cost()
         self.count_income()
-        print(f'Producer: {self.unique_id}, {self.product_price}')
+        # print(f'Producer: {self.unique_id}, {self.product_price}')
         # print(f"Manufacturer {self.unique_id}, production cost: {self.production_cost:.2f}")
         # print(f"Manufacturer {self.unique_id} doing.")

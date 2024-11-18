@@ -150,7 +150,8 @@ class SecondHandStore(Agent):
                 self.send_to_recycler(smartphone)
                 self.inventory.remove(smartphone)
         # update the every year average product price
-        product_price = [smartphone.secondhand_market_price
-                            for smartphone in self.inventory]
-        self.avg_product_price = np.mean(product_price)
+        if len(self.inventory) != 0:
+            product_price = [smartphone.secondhand_market_price
+                                for smartphone in self.inventory]
+            self.avg_product_price = np.mean(product_price)
         # print(f"SecondHandStore {self.unique_id} doing.")

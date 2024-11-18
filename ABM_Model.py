@@ -16,7 +16,7 @@ from ABM_SecHandStore import SecondHandStore
 from ABM_Manufacturer import Manufacturer
 
 
-class Smartphone_MODEL(Model):
+class SmartphoneModel(Model):
     """
     Attributes:
         seed (to fix random numbers), (default=None). Modeler's choice.
@@ -675,7 +675,7 @@ class Smartphone_MODEL(Model):
 
     def update_dynamic_lifetime(self):
         """
-
+        Update the dynamic product lifetimes based on the model's settings.
         """
         if self.dynamic_lifetime_model["Dynamic lifetime"]:
             self.d_product_lifetimes = [
@@ -716,22 +716,36 @@ class Smartphone_MODEL(Model):
         """
         if self.recycling_process["frelp"]:
             self.recovery_fractions = {
-                "Product": np.nan, "Aluminum": 0.994, "Glass": 0.98,
-                "Copper": 0.97, "Insulated cable": 1., "Silicon": 0.97,
+                "Product": np.nan, 
+                "Aluminum": 0.994, 
+                "Glass": 0.98,
+                "Copper": 0.97, 
+                "Insulated cable": 1., 
+                "Silicon": 0.97,
                 "Silver": 0.94}
             self.original_recycling_cost = [0.068, 0.068, 0.068]
             self.industrial_symbiosis = False
+        
         elif self.recycling_process["asu"]:
             self.recovery_fractions = {
-                "Product": np.nan, "Aluminum": 0.94, "Glass": 0.99,
-                "Copper": 0.83, "Insulated cable": 1., "Silicon": 0.90,
+                "Product": np.nan, 
+                "Aluminum": 0.94, 
+                "Glass": 0.99,
+                "Copper": 0.83, 
+                "Insulated cable": 1., 
+                "Silicon": 0.90,
                 "Silver": 0.74}
             self.original_recycling_cost = [0.153, 0.153, 0.153]
             self.industrial_symbiosis = False
+        
         elif self.recycling_process["hybrid"]:
             self.recovery_fractions = {
-                "Product": np.nan, "Aluminum": 0.994, "Glass": 0.98,
-                "Copper": 0.83, "Insulated cable": 1., "Silicon": 0.97,
+                "Product": np.nan, 
+                "Aluminum": 0.994, 
+                "Glass": 0.98,
+                "Copper": 0.83, 
+                "Insulated cable": 1., 
+                "Silicon": 0.97,
                 "Silver": 0.74}
             self.original_recycling_cost = [0.055, 0.055, 0.055]
             self.industrial_symbiosis = False

@@ -245,12 +245,12 @@ class Consumer(Agent):
             self.smartphone.time_held >= self.max_time_hoard: # exceed max_time_hoard
             valid_choices = ["resell", "recycle", "landfill"]
             return max(valid_choices, key=lambda k: self.behavior_intention[k])
-        
-        # #### Print function
-        # if decision == "eol_pathway":
-        #     print(f'Consumer {self.unique_id} decides to {self.pathway_choice} the smartphone.')
-        # else:
-        #     print(f'Consumer {self.unique_id} decides to purchase a {self.pathway_choice} smartphone.')
+
+        # Print function
+        if decision == "eol_pathway":
+            print(f'Consumer {self.unique_id} decides to {self.pathway_choice} the smartphone.')
+        else:
+            print(f'Consumer {self.unique_id} decides to purchase a {self.pathway_choice} smartphone.')
 
     def use_smartphone(self):
         """
@@ -336,7 +336,7 @@ class Consumer(Agent):
         """
         Simulate the recycling of the smartphone.
         """
-        recyclers = [agent for agent in self.model.agents 
+        recyclers = [agent for agent in self.model.agents
                              if isinstance(agent, Recycler)]
         trader = random.choice(recyclers)
         trader.recycle_from_customer(self.smartphone, self.unique_id)

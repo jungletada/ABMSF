@@ -93,17 +93,15 @@ class Recycler(Agent):
         """
         return self.recycled_material_price
 
-    def update_recycle_waste(self, mce):
+    def update_recycle_waste(self):
         """
         Update the total waste generated from recycling processes.
-
-        Args:
-            mce (float): Material circularity efficiency factor (0-1)
         """
-        for _ in self.recycled_stocks:
+        for product in self.recycled_stocks:
             for material in self.material_weights.keys():
-                self.recycle_waste += mce * self.recycle_waste_rate[material] \
-                    * self.material_weights[material]
+                self.recycle_waste += (1 - product.performance) \
+                * self.recycle_waste_rate[material] \
+                * self.material_weights[material]
 
         for product in self.recycled_stocks:
             product.remove()
@@ -113,7 +111,7 @@ class Recycler(Agent):
         Evolution of agent at each step
         """
         # Update the recycle waste
-        self.update_recycle_waste(mce=0.5)
+        self.update_recycle_waste()
         # Clean up the recycled products every year
         self.recycled_stocks = []
         # print(f"Recycler {self.unique_id} recycle waste: {self.recycle_waste}")

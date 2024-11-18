@@ -1,5 +1,5 @@
-import random
 import math
+import random
 from mesa import Agent
 
 
@@ -41,7 +41,7 @@ class Smartphone(Agent):
         self.is_new = is_new # True：new smartphone; False: used smartphone
         self.performance = performance  # Range from 0 to 1, where 1 is perfect condition
         self.time_held = time_held  # Number of time units (e.g., months or years) held by the user
-        self.producer_id = producer_id # 
+        self.producer_id = producer_id # Producer id
         self.user_id = user_id  # ID of the current user holding this phone
 
         self.purchase_price = product_price  # Purchase price from the new market
@@ -50,7 +50,7 @@ class Smartphone(Agent):
         self.secondhand_market_price = 0
         self.recycle_price = 0
         # Initial repair cost for second-hand store and recycler.
-        self.initial_repair_cost = initial_repair_cost 
+        self.initial_repair_cost = initial_repair_cost
 
         # Rate at which the performance degrades (lambda in the exponential decay model)
         self.decay_rate = decay_rate
@@ -58,7 +58,6 @@ class Smartphone(Agent):
 
         self.material_value = 500 # material_value depends on the ingredients of product.
 
-        # Additional attributes
         self.eol_probability = 0.05  # Probability that the phone reaches end-of-life per time step
         self.resell_value = self.calculate_resell_price()  # Value if resold in the second-hand market
         self.warranty_duration = 12 if self.is_new else 0  # New phones come with 12 months warranty
