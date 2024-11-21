@@ -11,12 +11,11 @@
 - ABM_Consumer.py
 - ABM_Model.py
 - ABM_Smartphones.py
-
-待完成：
 - ABM_Manufacturer.py
 - ABM_Recycler.py
 - ABM_SecHandStore.py
 
 ## ToDo
 1. Agents decision tree
+
 

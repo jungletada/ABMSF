@@ -44,18 +44,19 @@ class Manufacturer(Agent):
 
         super().__init__(model)
         self.unique_id = unique_id
-        
+        self.product_weight = 200 # in gram
+
         self.material_weights = material_weights or \
             {'metals':0.45, 'glass':0.32, 'Plastics':0.17, 'Other':0.06}
         self.virgin_material_price = virgin_material_price or \
-            {'metals':1000, 'glass':500, 'Plastics':200, 'Other':350}
+            {'metals':0.21, 'glass':500, 'Plastics':200, 'Other':350}
         self.recycled_material_price = recycled_material_price or \
             {'metals':1000, 'glass':500, 'Plastics':200, 'Other':350}
-        
+
         # Upper bound
         self.demand_limits = material_demand_limits or \
             {'metals':0.25, 'glass':0.1, 'Plastics':0.1, 'Other':0.3}
-        
+
         self.recycled_percentages = {}
 
         # Initialized as the sustainability
