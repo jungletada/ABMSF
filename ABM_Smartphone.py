@@ -14,6 +14,7 @@ class Smartphone(Agent):
             self,
             model,
             is_new,
+            product_id=None,
             producer_id=None,
             user_id=None,
             performance=1.0,
@@ -59,7 +60,7 @@ class Smartphone(Agent):
         self.material_value = 500 # material_value depends on the ingredients of product.
 
         self.eol_probability = 0.05  # Probability that the phone reaches end-of-life per time step
-        self.resell_value = self.calculate_resell_price()  # Value if resold in the second-hand market
+        self.resell_value = self.calculate_resell_price_sechnd()  # Value if resold in the second-hand market
         self.warranty_duration = 12 if self.is_new else 0  # New phones come with 12 months warranty
         self.alpha_recycle = 0.1
 
@@ -85,7 +86,7 @@ class Smartphone(Agent):
         # update price for eol
         self.calculate_repair_cost()
         self.calculate_recycle_price()
-        self.calculate_resell_price()
+        self.calculate_resell_price_sechnd()
 
     def calculate_repair_cost(self):
         """Attempt to repair the phone, considering warranty status and learning effects.
@@ -118,7 +119,7 @@ class Smartphone(Agent):
         """
         self.performance = min(0.95, self.performance + 0.3)  # Performance improves after repair
 
-    def calculate_resell_price(self):
+    def calculate_resell_price_sechnd(self):
         """
         Calculate the buying price for a used smartphone from a consumer.
         
@@ -137,7 +138,7 @@ class Smartphone(Agent):
         self.resell_price = buying_price * (1 + self.demand_used)
         return self.resell_price
 
-    def calculate_secondhand_market_price(self):
+    def calculate_sechnd_market_price(self):
         """
         Calculate the selling price for a used smartphone for used product market.
         

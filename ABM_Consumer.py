@@ -63,16 +63,17 @@ class Consumer(Agent):
         self.eol_pathway = None
         self.to_purchase = True
         self.pathway_choice = 'new'
-        # 'used' if random.random() <= init_purchase_dist else 'new'
-        
+        self.preference = random.choice([agent.unique_id for agent in self.model.agents
+                             if isinstance(agent, Manufacturer)])
+
         self.i_mu = 9
         self.i_sigma = 0.6
         self.income = np.random.lognormal(self.i_mu, self.i_sigma, 1)
 
         self.repair_cost = 0
         self.resell_cost = 0
-        self.landfill_cost = 0
-        self.hoard_cost = 0
+        self.landfill_cost = 10
+        self.hoard_cost = 10
         self.recycle_cost = 0
 
         self.max_time_hoard = max_time_hoard
@@ -104,12 +105,10 @@ class Consumer(Agent):
 
     def update_income(self, growth_rate=0.05):
         """
-        Update consumer incomes using a log-normal distribution and Matthew effect.
+        Update consumer's income annually with growth rate and Matthew effect.
 
         Args:
-            mu (float): Mean of the log-normal distribution.
-            sigma (float): Standard deviation of the log-normal distribution.
-            growth_rate (float): Overall income growth rate.
+            growth_rate (float): Annual income growth rate, defaults to 0.05 (5%)
         """
         if self.model.steps % 12 == 0 and self.model.steps != 0:
             increments = np.random.lognormal(self.i_mu, self.i_sigma, 1)  # Income increments
@@ -254,64 +253,42 @@ class Consumer(Agent):
 
     def use_smartphone(self):
         """
-        Simulate the consumer using the smartphone and updating its state.
+        Update smartphone usage time and state for the current consumer.
         """
         if self.smartphone:
             self.smartphone.update_time_held()
 
     def get_eol_cost_from_smartphone(self):
         """
-        Calculate and set the costs for different end-of-life options.
-        for perceived_behavioral_control in TPB model.
+        Calculate end-of-life costs for different disposal options based on smartphone condition.
+        Updates the PBC costs used in TPB decision making.
         """
         # repair cost need to be paid by consumer
         self.repair_cost = self.smartphone.calculate_repair_cost()
         # reresell cost is paid by second-hand store
-        self.resell_cost = -self.smartphone.calculate_resell_price()
+        self.resell_cost = -self.smartphone.calculate_resell_price_sechnd()
         # recycle cost is paid by second-hand store
         self.recycle_cost = -self.smartphone.calculate_recycle_price()
-        self.landfill_cost = 10
-        self.hoard_cost = 0
-
         self.pbc_costs_eol = {
             "repair": self.repair_cost / self.income, 
             "resell": self.resell_cost / self.income, 
             "recycle": self.recycle_cost / self.income, 
             "landfill": self.landfill_cost, 
-            "hoard": self.hoard_cost
-            }
+            "hoard": self.hoard_cost}
 
-    def purchase_smartphone(self):
+    def purchase_smartphone_from_manufacturer(self):
         """
-        Simulate the purchase of a smartphone from the market.
-        Parameters:
-            market (str): Indicates whether to purchase from the "new" or "used" market.
+        Execute smartphone purchase based on pathway choice (new/used).
+        Handles transactions with manufacturers or second-hand stores.
         """
         #======================== Purchase New Phone ========================#
         if self.pathway_choice == "new":
-            manufacutrers = [agent for agent in self.model.agents 
+            manufacutrers = [agent for agent in self.model.agents
                              if isinstance(agent, Manufacturer)]
             seller = random.choice(manufacutrers)
+            # Purchase smartphone from the manufacturer
             self.smartphone = seller.trade_with_consumer(consumer_id=self.unique_id)
-            # print(f'Consumer {self.unique_id} buy a new phone from Producer {seller.unique_id}')
-            #             consumer_id=self.unique_id)
-            # for seller in manufacutrers:
-            #     if abs(self.income - seller.product_price) < 200:
-            #         self.smartphone = seller.trade_with_consumer(
-            #             consumer_id=self.unique_id)
-            #         print(f'Consumer {self.unique_id} buy a new phone from Producer {seller.unique_id}')
-            #         break
-
-            # if self.smartphone is None:
-            #     min_price = 100000
-            #     min_price_seller = None
-            #     for seller in manufacutrers:
-            #         if seller.product_price < min_price:
-            #             min_price = seller.product_price
-            #             min_price_seller = seller
-            #     self.smartphone = min_price_seller.trade_with_consumer(
-            #             consumer_id=self.unique_id)
-                # print(f'Consumer {self.unique_id} buy a new phone from Producer {min_price_seller.unique_id}')
+            print(f'Consumer {self.unique_id} buy a new phone from Producer {seller.unique_id}')
 
         #======================== Purchase Used Phone ========================#
         elif self.pathway_choice == "used":
@@ -320,10 +297,13 @@ class Consumer(Agent):
             seller = random.choice(sechdstores)
             self.smartphone = seller.trade_with_consumer_resell(consumer_id=self.unique_id)
             # print(f'Consumer {self.unique_id} buy a used phone from second-hand store {seller.unique_id}')
+        else:
+            print(f"pathway_choice={self.pathway_choice} is not available.")
+            raise NotImplementedError
 
-    def resell_smartphone(self):
+    def resell_smartphone_to_second_store(self):
         """
-        Simulate the reselling of the smartphone to the second-hand store.
+        Sell current smartphone to a selected second-hand store.
         """
         sechdstores = [agent for agent in self.model.agents 
                             if isinstance(agent, SecondHandStore)]
@@ -334,19 +314,134 @@ class Consumer(Agent):
 
     def recycle_smartphone(self):
         """
-        Simulate the recycling of the smartphone.
+        Send current smartphone to a selected recycler or manufacturer.
         """
         recyclers = [agent for agent in self.model.agents
                              if isinstance(agent, Recycler)]
-        trader = random.choice(recyclers)
+        manufacutrers = [agent for agent in self.model.agents
+                             if isinstance(agent, Manufacturer)]
+        all_recyclers = manufacutrers + recyclers
+        trader = random.choice(all_recyclers)
         trader.recycle_from_customer(self.smartphone, self.unique_id)
-        # 更改产品的所有权
         self.smartphone = None
         # print(f"Consumer {self.consumer_id} recycled their smartphone.")
 
+    def purchase_with_manufacturer(self):
+        # Get all manufacturers
+        manufacturers = [agent for agent in self.model.schedule.agents 
+                         if isinstance(agent, Manufacturer)]
+        # Evaluate smartphones based on price and features
+        utilities = {}
+        income2price = {}
+        
+        for manufacturer in manufacturers:
+            income2price[manufacturer.unique_id] = self.income / manufacturer.product_price
+        
+        # Calculate min and max
+        values = list(income2price.values())
+        min_value = min(values)
+        max_value = min(max(values), 1)
+        # Apply min-max normalization formula
+        n_income2price = {
+            key: (value - min_value) / (max_value - min_value) 
+                for key, value in income2price.items()
+        }
+
+        noise = np.random.normal(0, 0.02)
+        for manufacturer in manufacturers:
+            utilities[manufacturer.unique_id] \
+                    = 0.5 * n_income2price[manufacturer.unique_id] \
+                    + 0.3 * self.preference \
+                    + 0.2 * manufacturer.features2price \
+                    + noise
+            
+        best_utility_id = max(utilities, key=utilities.get)
+        best_utility = utilities[best_utility_id]
+
+        trader = self.model.schedule._agents[best_utility_id]
+        self.smartphone = trader.trade_with_consumer(self.unique_id)
+        print(f"Consumer {self.unique_id} purchased smartphone: {self.smartphone}")
+    
+    def purchase_with_second_store(self):
+        # Get all manufacturers
+        sechdstores = [agent for agent in self.model.schedule.agents
+                         if isinstance(agent, SecondHandStore)]
+        view_size = int(0.4 * self.model.num_sechdstores)
+        sechdstores = random.choices(sechdstores, k=view_size)
+
+        # Evaluate smartphones based on price and features
+        utilities = {}
+        income2price = {}
+        for second_store in sechdstores:
+            if len(second_store.inventory) != 0:
+                for smartphone in second_store.inventory:
+                    used_price = smartphone.calculate_sechnd_market_price
+                    income2price[smartphone.product_id] = self.income / used_price
+
+        # Calculate min and max
+        values = list(income2price.values())
+        min_value = min(values)
+        max_value = min(max(values), 1)
+        # Apply min-max normalization formula
+        n_income2price = {
+            key: (value - min_value) / (max_value - min_value) 
+                for key, value in income2price.items()}
+
+        best_utility_id = None
+        best_product_id = None
+        best_utility = -float(math.inf)
+        noise = np.random.normal(0, 0.02)
+        for second_store in sechdstores:
+            if len(second_store.inventory) != 0:
+                for smartphone in second_store.inventory:
+                    producer = self.model.schedule._agents[smartphone.producer_id]
+                    utility = 0.5 * n_income2price[smartphone.product_id] \
+                            + 0.3 * self.preference \
+                            + 0.2 * producer.features2price \
+                            + noise
+                    if utility > best_utility:
+                        best_utility_id = second_store.unique_id
+                        best_utility = utility
+                        best_product_id = smartphone.product_id
+        # best_utility_id = max(utilities, key=utilities.get)
+        # best_utility = utilities[best_utility_id]
+        trader = self.model.schedule._agents[best_utility_id]
+        self.smartphone = trader.trade_with_consumer_resell(
+            consumer_id=self.unique_id, product_id=best_product_id)
+        print(f"Consumer {self.unique_id} purchased smartphone: {self.smartphone}")
+    
+    def calculate_recycling_intention(self):
+        """
+        Calculate recycling intention based on the extended TPB model formula.
+        """
+        # Weights for the extended TPB model
+        self.w_att_recycle = 0.45
+        self.w_sn_recycle = 0.35
+        self.w_pbc_recycle = 0.35
+        self.w_mn_recycle = 0.20
+        self.w_pc_recycle = 0.15
+        self.w_md_recycle = 0.20
+        # Compute intention score
+        recycling_intention = (
+            self.w_att_recycle * self.att_recycle +
+            self.w_sn_recycle * self.sn_recycle +
+            self.w_pbc_recycle * self.pbc_recycle +
+            self.w_mn_recycle * self.moral__recycle -
+            self.w_pc_recycle * self.privacy__recycle -
+            self.w_md_recycle * self.moderate_recycle
+        )
+        return recycling_intention
+
+    def decide_recycling(self, threshold=0.5):
+        """
+        Decide whether to participate in recycling based on the intention score.
+        """
+        intention_score = self.calculate_recycling_intention()
+        return intention_score >= threshold
+
     def landfill_smartphone(self):
         """
-        Simulate the landfilling of the smartphone.
+        Dispose of current smartphone in landfill.
         """
         if self.smartphone is not None:
             self.smartphone.remove()
@@ -355,7 +450,7 @@ class Consumer(Agent):
 
     def repair_smartphone(self):
         """
-        Simulate the repairing of the smartphone.
+        Repair current smartphone to improve its condition.
         """
         self.smartphone.repair_product()
         # print(f"Consumer {self.consumer_id} repaired their smartphone.")
@@ -383,7 +478,7 @@ class Consumer(Agent):
                 pbc_costs=self.pbc_costs_purchase,
                 att_level_reuse=float(np.random.normal(0.6, 0.1)))
             
-            self.purchase_smartphone()
+            self.purchase_smartphone_from_manufacturer()
 
             if self.pathway_choice == 'used':
                 self.num_cumulative_purchase_used += 1
@@ -408,7 +503,7 @@ class Consumer(Agent):
                 self.use_smartphone()
 
             elif self.pathway_choice == "resell":
-                self.resell_smartphone()
+                self.resell_smartphone_to_second_store()
 
             elif self.pathway_choice == "recycle":
                 self.recycle_smartphone()

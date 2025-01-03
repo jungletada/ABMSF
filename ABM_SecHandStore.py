@@ -85,13 +85,13 @@ class SecondHandStore(Agent):
         self.repair_cost += smartphone.calculate_repair_cost() # update the repairing cost
         smartphone.user_id = self.unique_id # change the owner
         smartphone.is_new = False
-        smartphone.calculate_secondhand_market_price() # decide the used product price
+        smartphone.calculate_sechnd_market_price() # decide the used product price
         self.inventory.append(smartphone) # add to the inventory
         self.customers.append(consumer_id)
         self.num_buy_from += 1
         # print(f'Second Market Trade: before {consumer_id}, after { smartphone.user_id}')
 
-    def trade_with_consumer_resell(self, consumer_id:int):
+    def trade_with_consumer_resell(self, consumer_id:int, product_id:int):
         """
         Simulate the sale of a used smartphone from the store's inventory to a consumer.
         
@@ -105,12 +105,11 @@ class SecondHandStore(Agent):
         to the purchasing consumer by updating the smartphone's user_id. If the store's 
         inventory is empty, returns None to indicate no smartphone is available for sale.
         """
-        if len(self.inventory) == 0:
-            return None
-        smartphone = self.inventory.pop(0) # 此处是弹出第一个手机
-        smartphone.user_id = consumer_id
-        self.num_sales += 1
-        return smartphone
+        for product in self.inventory:
+            if product.product_id == product_id:
+                product.user_id = consumer_id
+                self.num_sales += 1
+                return product
 
     def send_to_recycler(self, smartphone:Smartphone):
         """
