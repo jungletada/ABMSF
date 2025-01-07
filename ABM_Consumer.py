@@ -62,9 +62,10 @@ class Consumer(Agent):
         self.decision = None
         self.eol_pathway = None
         self.to_purchase = True
-        self.pathway_choice = 'new'
-        self.preference = random.choice([agent.unique_id for agent in self.model.agents
-                             if isinstance(agent, Manufacturer)])
+        self.pathway_action = 'new'
+        self.preference = random.choice([
+            agent.unique_id for agent in self.model.agents
+                if isinstance(agent, Manufacturer)])
 
         self.i_mu = 9
         self.i_sigma = 0.6
@@ -81,23 +82,59 @@ class Consumer(Agent):
         self.num_cumulative_purchase_used = 0
 
         # column sum up to 1
-        self.weight_att_eol = {"repair": 0.005, "resell": 0.01, "recycle": 0.1, "landfill": 0.4425, "hoard": 0.4425}
-        self.weight_sn_eol = {"repair": 0.005, "resell": 0.01, "recycle": 0.1, "landfill": 0.4425, "hoard": 0.4425}
-        self.weight_pbc_eol = {"repair": 0.005, "resell": 0.01, "recycle": 0.1, "landfill": 0.4425, "hoard": 0.4425}
+        self.eol_choices = ["repair", "resell", "recycle", "landfill", "hoard"]
+        self.weight_att_eol = {self.eol_choices[0]: 0.005, 
+                               self.eol_choices[1]: 0.01, 
+                               self.eol_choices[2]: 0.1, 
+                               self.eol_choices[3]: 0.4425, 
+                               self.eol_choices[4]: 0.4425}
+        self.weight_sn_eol = {self.eol_choices[0]: 0.005, 
+                               self.eol_choices[1]: 0.01, 
+                               self.eol_choices[2]: 0.1, 
+                               self.eol_choices[3]: 0.4425, 
+                               self.eol_choices[4]: 0.4425}
+        self.weight_pbc_eol = {self.eol_choices[0]: 0.005, 
+                               self.eol_choices[1]: 0.01, 
+                               self.eol_choices[2]: 0.1, 
+                               self.eol_choices[3]: 0.4425, 
+                               self.eol_choices[4]: 0.4425}
+        self.pbc_costs_eol = {self.eol_choices[0]: 0.005, 
+                               self.eol_choices[1]: 0.01, 
+                               self.eol_choices[2]: 0.1, 
+                               self.eol_choices[3]: 0.4425, 
+                               self.eol_choices[4]: 0.4425}
 
         # column sum up to 1
+        self.purchase_choices = ["used", "new"]
         self.weight_att_purchase = {'used': 0.5, 'new': 0.5}
         self.weight_sn_purchase = {'used': 0.25, 'new': 0.25}
         self.weight_pbc_purchase = {'used': 0.25, 'new': 0.25}
-
-        self.eol_pathway_choices = ["repair", "resell", "recycle", "landfill", "hoard"]
-        self.purchase_choices = ["used", "new"]
-
         self.pbc_costs_purchase = {'used': 3000, 'new': 4000}
-        self.pbc_costs_eol = {"repair": 0.005, "resell": 0.01, "recycle": 0.1, "landfill": 0.4425, "hoard": 0.4425} 
-
         self.behavior_intention = {}
         
+        # Recycle intention
+        self.trade_in_id = None
+        self.w_att_rc = 0.45
+        self.w_sn_rc = 0.35
+        self.w_pbc_rc = 0.35
+        self.w_mn_rc = 0.20
+        self.w_pc_rc = 0.15
+        self.w_md_rc = 0.20
+
+        self.w_att_pc_rc = 0.25
+        self.w_sn_pc_rc = 0.25
+        self.w_pbc_pc_rc = 0.25
+        self.w_mn_pc_rc = 0.25
+
+        self.recycle_choices = ['manufacturer', 'recycler']
+        self.att_recycle = {self.recycle_choices[0]: 0.5, self.recycle_choices[1]: 0.5}
+        self.sn_recycle =  {self.recycle_choices[0]: 0.5, self.recycle_choices[1]: 0.5}
+        self.pbc_recycle = {self.recycle_choices[0]: 0.5, self.recycle_choices[1]: 0.5}
+        self.mn_recycle =  {self.recycle_choices[0]: 0.5, self.recycle_choices[1]: 0.5}
+        self.pc_recycle =  {self.recycle_choices[0]: 0.5, self.recycle_choices[1]: 0.5}
+        self.md_recycle =  {self.recycle_choices[0]: 0.5, self.recycle_choices[1]: 0.5}
+        self.recycling_intention = {}
+        self.recycle_action = None
         # Get ID for recyclers and manufacturer
         self.recycling_facility_id = model.num_consumers + random.randrange(model.num_recyclers)
         self.refurbisher_id = model.num_consumers + model.num_prod_n_recyc + \
@@ -131,7 +168,7 @@ class Consumer(Agent):
         """
         att_level_ratios = {}
         if decision == "eol_pathway":
-            for i, pathway in enumerate(self.eol_pathway_choices):
+            for i, pathway in enumerate(self.eol_choices):
                 if pathway in ["repair", "resell", "recycle"]:
                     att_level_ratios[pathway] = att_level_env * weight_att[pathway]
                 else:
@@ -162,7 +199,7 @@ class Consumer(Agent):
         neighbor_agents = [agent for agent in neighbor_agents if isinstance(agent, Consumer)]
         proportion_sn = {}
         if decision == "eol_pathway":
-            list_choices = self.eol_pathway_choices
+            list_choices = self.eol_choices
         else:
             list_choices = self.purchase_choices
             
@@ -170,7 +207,7 @@ class Consumer(Agent):
             # for agent in neighbor_agents:
             #     print(f'I am {self.unique_id}, Neighbour: {agent.pathway_choice}')
             proportion_choice = sum(1 for agent in neighbor_agents
-                                    if agent.pathway_choice == choice) / len(neighbor_agents)
+                                    if agent.pathway_action == choice) / len(neighbor_agents)
             # print(choice, proportion_choice)
             proportion_sn[choice] = proportion_choice * weight_sn[choice]
         return proportion_sn
@@ -226,7 +263,7 @@ class Consumer(Agent):
             weight_att=weight_att)
         
         if decision == "eol_pathway":
-            list_choices = self.eol_pathway_choices
+            list_choices = self.eol_choices
         else:
             list_choices = self.purchase_choices
             
@@ -236,20 +273,20 @@ class Consumer(Agent):
                 pbc_values[choice] + sn_values[choice] + att_values[choice]
             # print(choice, pbc_values[choice], sn_values[choice], att_values[choice])
         
-        self.pathway_choice = max(self.behavior_intention,
+        self.pathway_action = max(self.behavior_intention,
                                 key=self.behavior_intention.get)
         
         # If hoarding time >= max_time_hoard, then choose to reresell, recycle or landfill.
-        if self.pathway_choice == "hoard" and \
+        if self.pathway_action == "hoard" and \
             self.smartphone.time_held >= self.max_time_hoard: # exceed max_time_hoard
             valid_choices = ["resell", "recycle", "landfill"]
             return max(valid_choices, key=lambda k: self.behavior_intention[k])
 
         # Print function
         if decision == "eol_pathway":
-            print(f'Consumer {self.unique_id} decides to {self.pathway_choice} the smartphone.')
+            print(f'Consumer {self.unique_id} decides to {self.pathway_action} the smartphone.')
         else:
-            print(f'Consumer {self.unique_id} decides to purchase a {self.pathway_choice} smartphone.')
+            print(f'Consumer {self.unique_id} decides to purchase a {self.pathway_action} smartphone.')
 
     def use_smartphone(self):
         """
@@ -276,30 +313,25 @@ class Consumer(Agent):
             "landfill": self.landfill_cost, 
             "hoard": self.hoard_cost}
 
-    def purchase_smartphone_from_manufacturer(self):
+    def purchase_smartphone(self):
         """
         Execute smartphone purchase based on pathway choice (new/used).
         Handles transactions with manufacturers or second-hand stores.
         """
-        #======================== Purchase New Phone ========================#
-        if self.pathway_choice == "new":
-            manufacutrers = [agent for agent in self.model.agents
-                             if isinstance(agent, Manufacturer)]
-            seller = random.choice(manufacutrers)
-            # Purchase smartphone from the manufacturer
-            self.smartphone = seller.trade_with_consumer(consumer_id=self.unique_id)
-            print(f'Consumer {self.unique_id} buy a new phone from Producer {seller.unique_id}')
-
-        #======================== Purchase Used Phone ========================#
-        elif self.pathway_choice == "used":
-            sechdstores = [agent for agent in self.model.agents 
-                             if isinstance(agent, SecondHandStore)]
-            seller = random.choice(sechdstores)
-            self.smartphone = seller.trade_with_consumer_resell(consumer_id=self.unique_id)
-            # print(f'Consumer {self.unique_id} buy a used phone from second-hand store {seller.unique_id}')
+        if self.trade_in_id is not None:
+            trader = self.model.schedule._agents[self.trade_in_id]
+            self.smartphone = trader.trade_with_consumer(self.unique_id)
+            self.trade_in_id = None
         else:
-            print(f"pathway_choice={self.pathway_choice} is not available.")
-            raise NotImplementedError
+            #======================== Purchase New Phone ========================#
+            if self.pathway_action == "new":
+                self.purchase_with_manufacturer()
+            #======================== Purchase Used Phone ========================#
+            elif self.pathway_action == "used":
+                self.purchase_with_second_store()
+            else:
+                print(f"pathway_choice={self.pathway_action} is not available.")
+                raise NotImplementedError
 
     def resell_smartphone_to_second_store(self):
         """
@@ -312,23 +344,14 @@ class Consumer(Agent):
         self.smartphone = None
         # print(f"Consumer {self.consumer_id} sold their smartphone.")
 
-    def recycle_smartphone(self):
-        """
-        Send current smartphone to a selected recycler or manufacturer.
-        """
-        recyclers = [agent for agent in self.model.agents
-                             if isinstance(agent, Recycler)]
-        manufacutrers = [agent for agent in self.model.agents
-                             if isinstance(agent, Manufacturer)]
-        all_recyclers = manufacutrers + recyclers
-        trader = random.choice(all_recyclers)
-        trader.recycle_from_customer(self.smartphone, self.unique_id)
-        self.smartphone = None
-        # print(f"Consumer {self.consumer_id} recycled their smartphone.")
-
     def purchase_with_manufacturer(self):
+        """
+        Purchase smartphone from manufacturer based on utility function.
+        Evaluates manufacturers based on income-to-price ratio, consumer preferences,
+        and product features to select the best option.
+        """
         # Get all manufacturers
-        manufacturers = [agent for agent in self.model.schedule.agents 
+        manufacturers = [agent for agent in self.model.schedule.agents
                          if isinstance(agent, Manufacturer)]
         # Evaluate smartphones based on price and features
         utilities = {}
@@ -343,10 +366,9 @@ class Consumer(Agent):
         max_value = min(max(values), 1)
         # Apply min-max normalization formula
         n_income2price = {
-            key: (value - min_value) / (max_value - min_value) 
+            key: (value - min_value) / (max_value - min_value)
                 for key, value in income2price.items()
         }
-
         noise = np.random.normal(0, 0.02)
         for manufacturer in manufacturers:
             utilities[manufacturer.unique_id] \
@@ -361,14 +383,19 @@ class Consumer(Agent):
         trader = self.model.schedule._agents[best_utility_id]
         self.smartphone = trader.trade_with_consumer(self.unique_id)
         print(f"Consumer {self.unique_id} purchased smartphone: {self.smartphone}")
-    
+
     def purchase_with_second_store(self):
+        """
+        Purchase used smartphone from second-hand store based on utility function.
+        
+        Evaluates available used smartphones from a random subset of stores based on 
+        income-to-price ratio, preferences, and product features.
+        """
         # Get all manufacturers
         sechdstores = [agent for agent in self.model.schedule.agents
                          if isinstance(agent, SecondHandStore)]
         view_size = int(0.4 * self.model.num_sechdstores)
         sechdstores = random.choices(sechdstores, k=view_size)
-
         # Evaluate smartphones based on price and features
         utilities = {}
         income2price = {}
@@ -384,7 +411,7 @@ class Consumer(Agent):
         max_value = min(max(values), 1)
         # Apply min-max normalization formula
         n_income2price = {
-            key: (value - min_value) / (max_value - min_value) 
+            key: (value - min_value) / (max_value - min_value)
                 for key, value in income2price.items()}
 
         best_utility_id = None
@@ -409,36 +436,75 @@ class Consumer(Agent):
         self.smartphone = trader.trade_with_consumer_resell(
             consumer_id=self.unique_id, product_id=best_product_id)
         print(f"Consumer {self.unique_id} purchased smartphone: {self.smartphone}")
-    
+
+    def recycle_smartphone(self):
+        """
+        Send current smartphone to a selected recycler or manufacturer.
+        """
+        recyclers = [agent for agent in self.model.agents
+                             if isinstance(agent, Recycler)]
+        manufacutrers = [agent for agent in self.model.agents
+                             if isinstance(agent, Manufacturer)]
+        all_recyclers = manufacutrers + recyclers
+        trader = random.choice(all_recyclers)
+        trader.recycle_from_customer(self.smartphone, self.unique_id)
+        self.smartphone = None
+        # print(f"Consumer {self.consumer_id} recycled their smartphone.")
+
     def calculate_recycling_intention(self):
         """
         Calculate recycling intention based on the extended TPB model formula.
         """
-        # Weights for the extended TPB model
-        self.w_att_recycle = 0.45
-        self.w_sn_recycle = 0.35
-        self.w_pbc_recycle = 0.35
-        self.w_mn_recycle = 0.20
-        self.w_pc_recycle = 0.15
-        self.w_md_recycle = 0.20
-        # Compute intention score
-        recycling_intention = (
-            self.w_att_recycle * self.att_recycle +
-            self.w_sn_recycle * self.sn_recycle +
-            self.w_pbc_recycle * self.pbc_recycle +
-            self.w_mn_recycle * self.moral__recycle -
-            self.w_pc_recycle * self.privacy__recycle -
-            self.w_md_recycle * self.moderate_recycle
-        )
-        return recycling_intention
+        tiv = self.smartphone.calculate_trade_in_value()
+        rec = self.smartphone.calculate_recycle_price()
+        self.pbc_recycle[self.recycle_choices[0]] = tiv / (tiv + rec)
+        self.pbc_recycle[self.recycle_choices[1]] = rec / (tiv + rec)
 
-    def decide_recycling(self, threshold=0.5):
+        neighbor_agents = self.model.grid.get_neighbors(
+            self.pos, include_center=False, radius=1)
+        neighbor_agents = [agent for agent in neighbor_agents if isinstance(agent, Consumer)]
+        
+        for c in self.recycle_choices:
+            self.sn_recycle[c] = sum(1 for agent in neighbor_agents
+                                if agent.recycle_action == c) / len(neighbor_agents)
+
+        for c in self.recycle_choices:
+            # Fuse privacy concern with attention, subjective norm, 
+            # perceived behavioral control and moral norm.
+            self.md_recycle[c] = \
+                self.w_att_pc_rc * self.att_recycle[c] * self.pc_recycle[c] + \
+                self.w_sn_pc_rc * self.sn_recycle[c] * self.pc_recycle[c] + \
+                self.w_pbc_pc_rc * self.pbc_recycle[c] * self.pc_recycle[c] + \
+                self.w_mn_pc_rc * self.mn_recycle[c] * self.pc_recycle[c]
+            
+            # The Theory of Planned Behavior, considering moral norm and privacy concern. 
+            self.recycling_intention[c] = \
+                self.w_att_rc * self.att_recycle[c] + \
+                self.w_sn_rc * self.sn_recycle[c] + \
+                self.w_pbc_rc * self.pbc_recycle[c] + \
+                self.w_mn_rc * self.mn_recycle[c] - \
+                self.w_pc_rc * self.pc_recycle[c] - \
+                self.w_md_rc * self.md_recycle[c]
+
+    def recycling_smartphone_tpb(self):
         """
         Decide whether to participate in recycling based on the intention score.
         """
-        intention_score = self.calculate_recycling_intention()
-        return intention_score >= threshold
-
+        self.calculate_recycling_intention()
+        self.recycle_action = max(self.recycling_intention,
+                                key=self.recycling_intention.get)
+        if self.recycle_action == 'manufacturer':
+            processor_id = self.smartphone.producer_id
+            processor = self.model.schedule._agents[processor_id]
+            self.trade_in_id = processor_id
+            processor.recycle_from_customer(self.smartphone, self.unique_id)
+        else:
+            recyclers = [agent for agent in self.model.agents
+                             if isinstance(agent, Recycler)]
+            processor = random.choice(recyclers)
+            processor.recycle_from_customer(self.smartphone, self.unique_id)
+            self.smartphone = None
+            
     def landfill_smartphone(self):
         """
         Dispose of current smartphone in landfill.
@@ -478,9 +544,9 @@ class Consumer(Agent):
                 pbc_costs=self.pbc_costs_purchase,
                 att_level_reuse=float(np.random.normal(0.6, 0.1)))
             
-            self.purchase_smartphone_from_manufacturer()
+            self.purchase_smartphone()
 
-            if self.pathway_choice == 'used':
+            if self.pathway_action == 'used':
                 self.num_cumulative_purchase_used += 1
             else:
                 self.num_cumulative_purchase_new += 1
@@ -490,7 +556,7 @@ class Consumer(Agent):
             # Step 2.2: Use the smartphone and check EoL decision
             # update 'self.pathway_choice'
             self.get_eol_cost_from_smartphone()
-            self.pathway_choice = self.tpb_decision(
+            self.pathway_action = self.tpb_decision(
                 decision='eol_pathway',
                 weight_att=self.weight_att_eol,
                 weight_sn=self.weight_sn_eol,
@@ -498,18 +564,18 @@ class Consumer(Agent):
                 pbc_costs=self.pbc_costs_eol,
                 att_level_reuse=float(np.random.normal(0.4, 0.1)))
             
-            if self.pathway_choice == "hoard":
+            if self.pathway_action == "hoard":
                 # update the time held and performance
                 self.use_smartphone()
 
-            elif self.pathway_choice == "resell":
+            elif self.pathway_action == "resell":
                 self.resell_smartphone_to_second_store()
 
-            elif self.pathway_choice == "recycle":
+            elif self.pathway_action == "recycle":
                 self.recycle_smartphone()
 
-            elif self.pathway_choice == "landfill":
+            elif self.pathway_action == "landfill":
                 self.landfill_smartphone()
                 
-            elif self.pathway_choice == "repair":
+            elif self.pathway_action == "repair":
                 self.repair_smartphone()

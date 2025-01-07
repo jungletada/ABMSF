@@ -72,10 +72,13 @@ class Manufacturer(Agent):
         self.financial_incentive = 0
         self.sigma_fi = 0.05
 
-        self.partners = []
+        self.customers = []
+        self.rec_customers = []
         self.cumulative_sales = 0
         self.income = 0
+        self.recycle_sum = 0
         self.production_cost = 0
+        self.cumulative_recycle_number = 0
 
     def calculate_production_cost(self):
         """
@@ -149,22 +152,25 @@ class Manufacturer(Agent):
             producer_id=self.unique_id,
             user_id=consumer_id)
         self.cumulative_sales += 1
-
+        self.customers.append(consumer_id)
         return smartphone
 
-    def trade_with_recycler(self):
+    def recycle_from_customer(self, smartphone: Smartphone, consumer_id:int):
         """
-        Establish trade with a random recycler to update recycled material prices.
-        
-        Randomly selects a recycler from available agents and updates the manufacturer's
-        recycled material prices based on the trade agreement.
-        """
-        recyclers = [agent for agent in self.model.agents
-                        if isinstance(agent, Recycler)]
-        trader = random.choice(recyclers)
-        self.recycled_material_price = trader.trade_with_manufacturer()
-        self.partners.append(trader)
+        Recycle a smartphone directly from a consumer.
 
+        Args:
+            smartphone (Smartphone): The smartphone to be recycled
+            consumer_id (int): The ID of the consumer recycling the phone
+
+        Returns:
+            float: The recycling price for the smartphone
+        """
+        self.cumulative_recycle_number += 1
+        tiv_price = smartphone.calculate_trade_in_value()
+        self.recycle_sum += tiv_price
+        self.rec_customers.append(consumer_id)
+    
     def count_income(self):
         """
         Count the income of the producer.

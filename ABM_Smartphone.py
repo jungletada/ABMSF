@@ -1,5 +1,6 @@
 import math
 import random
+import numpy as np
 from mesa import Agent
 
 
@@ -39,30 +40,41 @@ class Smartphone(Agent):
             user_id (int/None): ID of the current user who holds the phone (could be a consumer or second-hand store).
         """
         super().__init__(model)
-        self.is_new = is_new # True：new smartphone; False: used smartphone
+        self.is_new = is_new            # True：new smartphone; False: used smartphone
         self.performance = performance  # Range from 0 to 1, where 1 is perfect condition
-        self.time_held = time_held  # Number of time units (e.g., months or years) held by the user
-        self.producer_id = producer_id # Producer id
-        self.user_id = user_id  # ID of the current user holding this phone
+        self.time_held = time_held      # Number of time units (e.g., months or years) held by the user
+        self.producer_id = producer_id  # Producer id
+        self.user_id = user_id          # ID of the current user holding this phone
 
         self.purchase_price = product_price  # Purchase price from the new market
-        self.repair_cost = 0  # Repair cost if the phone is broken
+        self.repair_cost = 0    # Repair cost if the phone is broken
         self.resell_price = 0
         self.secondhand_market_price = 0
-        self.recycle_price = 0
+        
         # Initial repair cost for second-hand store and recycler.
         self.initial_repair_cost = initial_repair_cost
 
         # Rate at which the performance degrades (lambda in the exponential decay model)
         self.decay_rate = decay_rate
         self.demand_used = demand_used
-
         self.material_value = 500 # material_value depends on the ingredients of product.
-
         self.eol_probability = 0.05  # Probability that the phone reaches end-of-life per time step
         self.resell_value = self.calculate_resell_price_sechnd()  # Value if resold in the second-hand market
         self.warranty_duration = 12 if self.is_new else 0  # New phones come with 12 months warranty
-        self.alpha_recycle = 0.1
+
+        # Recycle Service
+        self.perf_rec = 0.1
+        self.time_rec = 0.2
+        self.price_rec = 0.7
+        self.discount_rec = np.random.normal(0.65, 0.02)
+        self.recycle_price = self.discount_rec * self.purchase_price
+
+        # Trade-in-Service
+        self.perf_tiv = 0.1
+        self.time_tiv = 0.1
+        self.price_tiv = 0.8
+        self.discount_tiv = np.random.normal(0.5, 0.02)
+        self.trade_in_value = self.discount_tiv * self.purchase_price
 
     def degrade_performance(self):
         """
@@ -138,12 +150,36 @@ class Smartphone(Agent):
         self.resell_price = buying_price * (1 + self.demand_used)
         return self.resell_price
 
+    def calculate_trade_in_value(self):
+        """Model the Manufacturer Recycling for Trade-in (Old-for-New Service)"""
+        self.trade_in_value = self.discount_tiv * \
+            (self.perf_tiv * self.performance + \
+                self.time_tiv / (1 + self.time_held) + \
+                    self.price_tiv * self.purchase_price)
+        return self.trade_in_value
+    
+    def calculate_recycle_price(self):
+        """
+        Calculate the recycled price for a used smartphone based 
+            on recoverable material value.
+            
+        Returns:
+            float: The recycled price for the used smartphone.
+        """
+        # Recycled price based on material value and scaling factor alpha
+        self.recycle_price = self.discount_rec * \
+            (self.perf_rec * self.performance + \
+                self.time_rec / (1 + self.time_held) + \
+                    self.price_rec * self.purchase_price)
+        return self.recycle_price
+
     def calculate_sechnd_market_price(self):
         """
         Calculate the selling price for a used smartphone for used product market.
-        
+
         Parameters:
-            phone_performance (float): The performance of the used smartphone (Perf_{sid}^t), a value between 0 and 1.
+            phone_performance (float): The performance of the used smartphone (Perf_{sid}^t), 
+                a value between 0 and 1.
             repair_cost (float): The calculated repair cost (C_{repair}) for the used phone.
             
         Returns:
@@ -156,17 +192,6 @@ class Smartphone(Agent):
         # Adjust the buying price based on the demand for used phones
         self.secondhand_market_price = selling_price * (1 + self.demand_used)
         return self.secondhand_market_price
-
-    def calculate_recycle_price(self):
-        """
-        Calculate the recycled price for a used smartphone based on recoverable material value.
-            
-        Returns:
-            float: The recycled price for the used smartphone.
-        """
-        # Recycled price based on material value and scaling factor alpha
-        self.recycle_price = self.alpha_recycle * self.material_value
-        return self.recycle_price
 
     def recycle_product(self, new_owner_id):
         """
