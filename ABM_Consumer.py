@@ -1,6 +1,6 @@
-import operator
 import math
 import random
+import operator
 import numpy as np
 
 from collections import OrderedDict
