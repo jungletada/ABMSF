@@ -1,8 +1,6 @@
 import math
 import random
-import operator
 import numpy as np
-
 from collections import OrderedDict
 from scipy.stats import truncnorm
 from mesa import Agent
@@ -156,15 +154,15 @@ class Consumer(Agent):
 
     def tpb_attitude(self, decision, att_level_env, weight_att):
         """
-        Calculate pro-environmental attitude component of EoL TPB rule. Options
-        considered pro environmental get a higher score than other options.
+        Calculates the pro-environmental attitude component of the Theory of Planned Behavior (TPB) rule. It assigns a higher score to options that are considered pro-environmental.
+        
         Parameters:
-            decision (str): The type of decision being made (e.g., "eol_pathway" or "purchase_choice").
-            att_level_reuse (float): The attitude level towards reuse/pro-environmental options.
-            weight_att (dict): A dictionary of weights for each option in the attitude calculation.
+            decision (str): Specifies the type of decision being made, such as "eol_pathway" for end-of-life pathway choices or "purchase_choice" for purchasing decisions.
+            att_level_env (float): Represents the individual's attitude level towards pro-environmental options, such as reuse or recycling.
+            weight_att (dict): A dictionary containing weights for each option in the attitude calculation, used to adjust the score based on the option's environmental impact.
+        
         Returns:
-            att_level_ratios (dict): A dictionary containing the calculated attitude levels for each option,
-                                     weighted by the corresponding attitude weight.
+            att_level_ratios (dict): A dictionary that contains the calculated attitude levels for each option, adjusted by the corresponding weight from the weight_att dictionary. This output represents the individual's attitude towards each option, with pro-environmental options receiving a higher score.
         """
         att_level_ratios = {}
         if decision == "eol_pathway":
@@ -246,7 +244,7 @@ class Consumer(Agent):
                      pbc_costs, att_level_reuse):
         """
         Select the decision with highest behavioral intention following the
-        Theory of `Planned Bahevior` (TPB). `Behavioral intention` is a function
+        Theory of `Planned Behavior` (TPB). `Behavioral intention` is a function
         of the subjective norm, the perceived behavioral control and attitude.
         Parameters:
             decision (str): The type of decision being made (e.g., "eol_pathway" or "purchase_choice").
@@ -288,17 +286,10 @@ class Consumer(Agent):
         else:
             print(f'Consumer {self.unique_id} decides to purchase a {self.pathway_action} smartphone.')
 
-    def use_smartphone(self):
+    def get_eol_cost_of_smartphone(self):
         """
-        Update smartphone usage time and state for the current consumer.
-        """
-        if self.smartphone:
-            self.smartphone.update_time_held()
-
-    def get_eol_cost_from_smartphone(self):
-        """
-        Calculate end-of-life costs for different disposal options based on smartphone condition.
-        Updates the PBC costs used in TPB decision making.
+        This function calculates the end-of-life costs for different disposal options based on the condition of the smartphone.
+        It also updates the Perceived Behavioral Control (PBC) costs used in the Theory of Planned Behavior (TPB) decision making.
         """
         # repair cost need to be paid by consumer
         self.repair_cost = self.smartphone.calculate_repair_cost()
@@ -312,11 +303,19 @@ class Consumer(Agent):
             "recycle": self.recycle_cost / self.income, 
             "landfill": self.landfill_cost, 
             "hoard": self.hoard_cost}
-
+    
+    def use_smartphone(self):
+        """
+        Update smartphone usage time and state for the current consumer.
+        """
+        if self.smartphone:
+            self.smartphone.update_time_held()
+    
     def purchase_smartphone(self):
         """
-        Execute smartphone purchase based on pathway choice (new/used).
-        Handles transactions with manufacturers or second-hand stores.
+        Facilitates the purchase of a smartphone based on the consumer's chosen pathway, either new or used. 
+        This function orchestrates the transaction process with either a manufacturer for a new phone 
+        or a second-hand store for a used phone.
         """
         if self.trade_in_id is not None:
             trader = self.model.schedule._agents[self.trade_in_id]
@@ -328,21 +327,26 @@ class Consumer(Agent):
                 self.purchase_with_manufacturer()
             #======================== Purchase Used Phone ========================#
             elif self.pathway_action == "used":
-                self.purchase_with_second_store()
+                self.purchase_with_second_hand_store()
             else:
                 print(f"pathway_choice={self.pathway_action} is not available.")
                 raise NotImplementedError
 
-    def resell_smartphone_to_second_store(self):
+    def dispose_smartphone_in_landfill(self):
         """
-        Sell current smartphone to a selected second-hand store.
+        Disposing the current smartphone in a landfill.
         """
-        sechdstores = [agent for agent in self.model.agents 
-                            if isinstance(agent, SecondHandStore)]
-        seller = random.choice(sechdstores)
-        seller.buy_from_consumer(self.smartphone)
+        if self.smartphone is not None:
+            self.smartphone.remove()
         self.smartphone = None
-        # print(f"Consumer {self.consumer_id} sold their smartphone.")
+        # print(f"Consumer {self.consumer_id} landfilled their smartphone.")
+
+    def repair_smartphone(self):
+        """
+        Repair current smartphone to improve its condition.
+        """
+        self.smartphone.repair_product()
+        # print(f"Consumer {self.consumer_id} repaired their smartphone.")
 
     def purchase_with_manufacturer(self):
         """
@@ -384,7 +388,7 @@ class Consumer(Agent):
         self.smartphone = trader.trade_with_consumer(self.unique_id)
         print(f"Consumer {self.unique_id} purchased smartphone: {self.smartphone}")
 
-    def purchase_with_second_store(self):
+    def purchase_with_second_hand_store(self):
         """
         Purchase used smartphone from second-hand store based on utility function.
         
@@ -437,6 +441,17 @@ class Consumer(Agent):
             consumer_id=self.unique_id, product_id=best_product_id)
         print(f"Consumer {self.unique_id} purchased smartphone: {self.smartphone}")
 
+    def sell_smartphone_to_second_hand_store(self):
+        """
+        Initiates the process of selling the consumer's current smartphone to a randomly chosen second-hand store.
+        """
+        sechdstores = [agent for agent in self.model.agents 
+                            if isinstance(agent, SecondHandStore)]
+        seller = random.choice(sechdstores)
+        seller.buy_from_consumer(self.smartphone)
+        self.smartphone = None
+        # print(f"Consumer {self.consumer_id} sold their smartphone.")
+
     def recycle_smartphone(self):
         """
         Send current smartphone to a selected recycler or manufacturer.
@@ -453,7 +468,10 @@ class Consumer(Agent):
 
     def calculate_recycling_intention(self):
         """
-        Calculate recycling intention based on the extended TPB model formula.
+        Calculates the consumer's intention to recycle their smartphone based on 
+        the extended Theory of Planned Behavior (TPB) model. It considers factors such as 
+        perceived behavioral control, subjective norm, moral norm, and privacy concern 
+        to determine the likelihood of recycling.
         """
         tiv = self.smartphone.calculate_trade_in_value()
         rec = self.smartphone.calculate_recycle_price()
@@ -469,15 +487,15 @@ class Consumer(Agent):
                                 if agent.recycle_action == c) / len(neighbor_agents)
 
         for c in self.recycle_choices:
-            # Fuse privacy concern with attention, subjective norm, 
-            # perceived behavioral control and moral norm.
+            # Combine privacy concern with attention, subjective norm, 
+            # perceived behavioral control, and moral norm.
             self.md_recycle[c] = \
                 self.w_att_pc_rc * self.att_recycle[c] * self.pc_recycle[c] + \
                 self.w_sn_pc_rc * self.sn_recycle[c] * self.pc_recycle[c] + \
                 self.w_pbc_pc_rc * self.pbc_recycle[c] * self.pc_recycle[c] + \
                 self.w_mn_pc_rc * self.mn_recycle[c] * self.pc_recycle[c]
             
-            # The Theory of Planned Behavior, considering moral norm and privacy concern. 
+            # Calculate recycling intention based on the Theory of Planned Behavior, including moral norm and privacy concern. 
             self.recycling_intention[c] = \
                 self.w_att_rc * self.att_recycle[c] + \
                 self.w_sn_rc * self.sn_recycle[c] + \
@@ -488,7 +506,11 @@ class Consumer(Agent):
 
     def recycling_smartphone_tpb(self):
         """
-        Decide whether to participate in recycling based on the intention score.
+        Determines the consumer's decision to recycle their smartphone based on the 
+        Theory of Planned Behavior (TPB) model. It calculates the recycling intention score 
+        and selects the recycling action with the highest score. 
+        Depending on the chosen action, the smartphone is either recycled with a manufacturer 
+        or a randomly selected recycler.
         """
         self.calculate_recycling_intention()
         self.recycle_action = max(self.recycling_intention,
@@ -504,23 +526,7 @@ class Consumer(Agent):
             processor = random.choice(recyclers)
             processor.recycle_from_customer(self.smartphone, self.unique_id)
             self.smartphone = None
-            
-    def landfill_smartphone(self):
-        """
-        Dispose of current smartphone in landfill.
-        """
-        if self.smartphone is not None:
-            self.smartphone.remove()
-        self.smartphone = None
-        # print(f"Consumer {self.consumer_id} landfilled their smartphone.")
-
-    def repair_smartphone(self):
-        """
-        Repair current smartphone to improve its condition.
-        """
-        self.smartphone.repair_product()
-        # print(f"Consumer {self.consumer_id} repaired their smartphone.")
-
+    
     def step(self):
         """
         Main simulation step for the consumer.
@@ -555,7 +561,7 @@ class Consumer(Agent):
         else:
             # Step 2.2: Use the smartphone and check EoL decision
             # update 'self.pathway_choice'
-            self.get_eol_cost_from_smartphone()
+            self.get_eol_cost_of_smartphone()
             self.pathway_action = self.tpb_decision(
                 decision='eol_pathway',
                 weight_att=self.weight_att_eol,

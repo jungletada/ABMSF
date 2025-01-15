@@ -82,11 +82,10 @@ class Manufacturer(Agent):
 
     def calculate_production_cost(self):
         """
-        Calculate the production cost based on the use of materials and determine optimal
-        recycled material percentages while staying under max production cost.
+        Calculates the total production cost of a smartphone by considering the use of both virgin and recycled materials. It also optimizes the percentage of recycled materials used to minimize the production cost while adhering to the maximum allowed production cost constraints.
         
         Returns:
-            float: Total production cost considering the recycled materials and constraints.
+            float: The total production cost of a smartphone, taking into account the optimal use of recycled materials and adhering to cost constraints.
         """
         for material in self.material_weights:
             # Calculate cost impact of increasing recycled content
@@ -109,14 +108,15 @@ class Manufacturer(Agent):
 
     def set_product_price(self, step):
         """
-        Calculate the price of the new smartphone based on the key factors.
-        Updates price annually (every 12 steps) with a small increase.
+        Adjusts the price of the smartphone annually based on demand elasticity and production cost.
+        
+        This method updates the product price every 12 steps (representing a year) by applying a price increase based on the demand elasticity, which simulates a 2-5% annual increase. Additionally, it incorporates a production cost adjustment to ensure profitability, considering the profit margin. The final price is rounded up to the nearest integer.
         
         Args:
-            step (int): Current simulation step (month)
+            step (int): The current step in the simulation, representing months.
             
         Returns:
-            float: The price of the new smartphone at time t.
+            float: The updated price of the smartphone.
         """
         # Only update price annually (every 12 steps)
         if step % 12 == 0 and step != 0:
@@ -157,7 +157,7 @@ class Manufacturer(Agent):
 
     def recycle_from_customer(self, smartphone: Smartphone, consumer_id:int):
         """
-        Recycle a smartphone directly from a consumer.
+        Recycle a smartphone directly from a consumer for trade-in service.
 
         Args:
             smartphone (Smartphone): The smartphone to be recycled

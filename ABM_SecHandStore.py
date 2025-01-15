@@ -111,7 +111,7 @@ class SecondHandStore(Agent):
                 self.num_sales += 1
                 return product
 
-    def send_to_recycler(self, smartphone:Smartphone):
+    def send_smartphone_to_recycler(self, smartphone:Smartphone):
         """
         Send a smartphone from the store's inventory to a recycler.
         
@@ -129,7 +129,7 @@ class SecondHandStore(Agent):
         #######################
         ## Trade with Recycler
         #######################
-        trader.recycle_from_secondhand(smartphone, self.unique_id)
+        trader.recycle_from_secondhandstore(smartphone, self.unique_id)
         # print(f'Second Market Trade: before {self.unique_id}, after { smartphone.user_id}')
 
     def step(self):
@@ -146,7 +146,7 @@ class SecondHandStore(Agent):
             smartphone.update_time_held()
             if smartphone.time_held >= self.max_time_held:
                 # random pick a recycler
-                self.send_to_recycler(smartphone)
+                self.send_smartphone_to_recycler(smartphone)
                 self.inventory.remove(smartphone)
         # update the every year average product price
         if len(self.inventory) != 0:

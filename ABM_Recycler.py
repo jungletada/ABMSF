@@ -57,14 +57,15 @@ class Recycler(Agent):
 
     def recycle_from_customer(self, smartphone: Smartphone, consumer_id:int):
         """
-        Recycle a smartphone directly from a consumer.
+        Facilitates the recycling of a smartphone directly from a consumer, 
+        updating the recycler's records and inventory.
 
         Args:
-            smartphone (Smartphone): The smartphone to be recycled
-            consumer_id (int): The ID of the consumer recycling the phone
+            smartphone (Smartphone): The smartphone being recycled, which is removed from the consumer's possession.
+            consumer_id (int): The unique identifier of the consumer who is recycling the smartphone.
 
         Returns:
-            float: The recycling price for the smartphone
+            float: The price paid to the consumer for recycling their smartphone.
         """
         recycle_price = smartphone.calculate_recycle_price()
         self.recyclering_cost += recycle_price
@@ -73,25 +74,25 @@ class Recycler(Agent):
         self.recycled_stocks.append(smartphone)
         return recycle_price
 
-    def recycle_from_secondhand(self, smartphone: Smartphone, sechdstore_id:int):
+    def recycle_from_secondhandstore(self, smartphone: Smartphone, sechdstore_id:int):
         """
-        Recycle a smartphone from the second-hand market.
+        Facilitates the recycling of a smartphone from the second-hand market, 
+        updating the recycler's records and inventory.
+
+        Args:
+            smartphone (Smartphone): The smartphone being recycled, 
+            which is removed from the second-hand market.
+            sechdstore_id (int): The unique identifier of the second-hand store 
+            from which the smartphone is being recycled.
+
+        This method updates the recycler's records by adding the smartphone to the 
+        recycled stocks, incrementing the cumulative recycle number, and updating 
+        the recycling cost. It also associates the second-hand store ID with the recycling process.
         """
-        # Recycle the smartphone and update the recycle number
-        # Update the recycle cost
         self.recyclering_cost += smartphone.calculate_recycle_price()
         self.sechdstore_partner.append(sechdstore_id)
         self.cumulative_recycle_number += 1
         self.recycled_stocks.append(smartphone)
-
-    def trade_with_manufacturer(self):
-        """
-        Get the prices of recycled materials for trading with manufacturers.
-
-        Returns:
-            dict: Dictionary of recycled material prices, with materials as keys and prices as values
-        """
-        return self.recycled_material_price
 
     def update_recycle_waste(self):
         """
