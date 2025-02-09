@@ -7,6 +7,6 @@ model = SmartphoneModel()
 
 
 if __name__ == "__main__":
-    for t in range(1):
+    for t in range(10):
         model.step()
         

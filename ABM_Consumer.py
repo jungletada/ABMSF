@@ -200,8 +200,7 @@ class Consumer(Agent):
             list_choices = self.purchase_choices
             
         for choice in list_choices:
-            # for agent in neighbor_agents:
-            #     print(f'I am {self.unique_id}, Neighbour: {agent.pathway_choice}')
+          
             proportion_choice = sum(1 for agent in neighbor_agents
                                     if agent.pathway_action == choice) / len(neighbor_agents)
             # print(choice, proportion_choice)
@@ -381,9 +380,9 @@ class Consumer(Agent):
         best_utility_id = max(utilities, key=utilities.get)
         best_utility = utilities[best_utility_id]
         
-        for m in manufacturers:
-            if m.unique_id == best_utility_id:
-                self.smartphone = m.trade_with_consumer(self.unique_id)
+        for trader in manufacturers:
+            if trader.unique_id == best_utility_id:
+                self.smartphone = trader.trade_with_consumer(self.unique_id)
         print(f"Consumer {self.unique_id} purchased smartphone: {self.smartphone}")
 
     def purchase_with_secondhand_store(self):
@@ -535,12 +534,10 @@ class Consumer(Agent):
         Main simulation step for the consumer.
         """
         self.update_income() # update the income according to Matthew Effect 
-        print(f"Update Consumer {self.unique_id} with income {self.income}")
-        
+       
         # Step 1: Check if the consumer needs a new smartphone and update 'self.to_purchase'
         self.to_purchase = self.smartphone is None
-        # print(f"Consumer {self.unique_id} to purchase: {self.to_purchase}")
-        
+
         if self.to_purchase:
             # Step 2.1: Decide whether to purchase new or used smartphone
             # update 'self.pathway_choice'
@@ -574,15 +571,15 @@ class Consumer(Agent):
             
             if self.pathway_action == "hoard":
                 self.use_smartphone() # update the time held and performance
-
+                
             elif self.pathway_action == "resell":
                 self.resell_smartphone_to_second_store()
 
             elif self.pathway_action == "recycle":
                 self.recycle_smartphone()
-
+                
             elif self.pathway_action == "landfill":
                 self.landfill_smartphone()
-                
+                                
             elif self.pathway_action == "repair":
                 self.repair_smartphone()
