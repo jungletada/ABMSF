@@ -15,7 +15,6 @@ class Smartphone(Agent):
             self,
             model,
             is_new,
-            product_id=None,
             producer_id=None,
             user_id=None,
             performance=1.0,
@@ -50,7 +49,7 @@ class Smartphone(Agent):
         self.repair_cost = 0    # Repair cost if the phone is broken
         self.resell_price = 0
         self.secondhand_market_price = 0
-        
+        self.sec_features2price = random.uniform(0.5, 0.8) # only valid if used
         # Initial repair cost for second-hand store and recycler.
         self.initial_repair_cost = initial_repair_cost
 

@@ -51,16 +51,16 @@ class SecondHandStore(Agent):
         Initialize the store's inventory with a set number of used smartphones.
         Each smartphone is created with randomized performance and time held values.
         """
-        producer_ids = self.model.new_product_id_price.keys()
-        choose_id = random.choice(list(producer_ids))
-        product_price = self.model.new_product_id_price[choose_id]
+        producer_ids = list(self.model.new_product_id_price.keys())
         for _ in range(self.num_used_products):
+            choose_id = random.choice(producer_ids)
+            product_price = self.model.new_product_id_price[choose_id]
             self.inventory.append(
                 Smartphone(
                     model=self.model,
                     is_new=False,
                     producer_id=choose_id,
-                    user_id=self.unique_id,
+                    user_id=None,
                     performance=random.uniform(0.7, 1),
                     time_held=random.randint(0, 24),
                     demand_used=0.3,
@@ -91,7 +91,7 @@ class SecondHandStore(Agent):
         self.num_buy_from += 1
         # print(f'Second Market Trade: before {consumer_id}, after { smartphone.user_id}')
 
-    def trade_with_consumer_resell(self, consumer_id:int, product_id:int):
+    def trade_with_consumer_resell(self, smartphone_id:int):
         """
         Simulate the sale of a used smartphone from the store's inventory to a consumer.
         
@@ -105,11 +105,10 @@ class SecondHandStore(Agent):
         to the purchasing consumer by updating the smartphone's user_id. If the store's 
         inventory is empty, returns None to indicate no smartphone is available for sale.
         """
+        self.num_sales += 1
         for product in self.inventory:
-            if product.product_id == product_id:
-                product.user_id = consumer_id
-                self.num_sales += 1
-                return product
+            if product.unique_id == smartphone_id:
+                self.inventory.remove(product)
 
     def send_smartphone_to_recycler(self, smartphone:Smartphone):
         """

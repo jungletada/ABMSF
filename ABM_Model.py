@@ -184,130 +184,30 @@ class SmartphoneModel(Model):
             seed=None,
             calibration_n_sensitivity=1,
             calibration_n_sensitivity_2=1,
-            num_consumers=1000,
             consumers_node_degree=10,
             consumers_network_type="small-world",
             rewiring_prob=0.1,
+            num_consumers=1000,
             num_recyclers=15,
-            num_producers=10,
+            num_producers=8,
+            num_sechdstores=40,
             prod_n_recyc_node_degree=5,
             prod_n_recyc_network_type="small-world",
-            num_sechdstores=30,
             init_consumer_purchase_dist={'used':0.2, 'new':0.8},
             consumers_distribution={"residential": 1, "commercial": 0., "utility": 0.},
             init_eol_rate={"repair": 0.005, "sell": 0.01, "recycle": 0.1, "landfill": 0.4425, "hoard": 0.4425},
             init_purchase_rate={"new": 0.9995, "used": 0.0005},
-            total_number_product=[38, 38, 38, 38, 38, 38, 38, 139, 251,
-                                378, 739, 1670, 2935, 4146, 5432, 6525,
-                                3609, 4207, 4905, 5719],
-            product_distribution={"residential": 1, "commercial": 0., "utility": 0.},
             product_growth=[0.166, 0.045],
             growth_threshold=10,
-            failure_rate_alpha=[2.4928, 5.3759, 3.93495],
             hoarding_cost=[0, 0.001, 0.0005],
-            landfill_cost=[
-                0.0089, 0.0074, 0.0071, 0.0069, 0.0056, 0.0043,
-                0.0067, 0.0110, 0.0085, 0.0082, 0.0079, 0.0074, 0.0069,
-                0.0068, 0.0068, 0.0052, 0.0052, 0.0051, 0.0074, 0.0062,
-                0.0049, 0.0049, 0.0047, 0.0032, 0.0049, 0.0065, 0.0064,
-                0.0062, 0.0052, 0.0048, 0.0048, 0.0044, 0.0042, 0.0039,
-                0.0039, 0.0045, 0.0055, 0.0050, 0.0049, 0.0044, 0.0044,
-                0.0039, 0.0033, 0.0030, 0.0041, 0.0050, 0.0040, 0.0040,
-                0.0038, 0.0033],
-            theory_of_planned_behavior={
-                "residential": True, "commercial": True, "utility": True},
-            w_sn_eol=0.27,
-            w_pbc_eol=0.44,
-            w_a_eol=0.39,
-            w_sn_reuse=0.497,
-            w_pbc_reuse=0.382,
-            w_a_reuse=0.464,
-            product_lifetime=30,
+            landfill_cost=[],
             all_eol_pathways={"repair": True, "sell": True,
                             "recycle": True, "landfill": True,
                             "hoard": True},
-            max_storage=[1, 8, 4],
             att_distrib_param_eol=[0.544, 0.1],
             att_distrib_param_reuse=[0.223, 0.262],
-            original_recycling_cost=[0.106, 0.128, 0.117],
-            recycling_learning_shape_factor=-0.39,
             repairability=0.55,
-            # some modules don't need repair
-            original_repairing_cost=[0.1, 0.45, 0.23],
-            # HERE
-            repairing_learning_shape_factor=-0.31,
-            scndhand_mkt_pric_rate=[0.4, 0.2],
-            # from https://www.ise.fraunhofer.de/content/dam/ise/de/
-            # documents/publications/studies/AgoraEnergiewende_Current_and_
-            # Future_Cost_of_PV_Feb2015_web.pdf
-            # a=6.5, b=0.078, y=a*exp(b*-t)
-            fsthand_mkt_pric=0.45,
-            #0.04
-            fsthand_mkt_pric_reg_param=[1, 0.04],
-            # HERE
-            refurbisher_margin=[0.4, 0.6, 0.5],
-            purchase_choices={"new": True, "used": True, "certified": False},
-            init_trust_boundaries=[-1, 1],
-            social_event_boundaries=[-1, 1],
-            social_influencability_boundaries=[0, 1],
-            trust_threshold=0.5,
-            knowledge_threshold=0.5,
-            willingness_threshold=0.5,
-            self_confidence_boundaries=[0, 1],
-            product_mass_fractions={"Product": 1, "Aluminum": 0.08,
-                                    "Glass": 0.76, "Copper": 0.01,
-                                    "Insulated cable": 0.012,
-                                    "Silicon": 0.036, "Silver": 0.00032},
-            established_scd_mkt={"Product": True, "Aluminum": True,
-                                "Glass": True, "Copper": True,
-                                "Insulated cable": True,
-                                "Silicon": False, "Silver": False},
-            scd_mat_prices={"Product": [np.nan, np.nan, np.nan],
-                            "Aluminum": [0.66, 1.98, 1.32],
-                            "Glass": [0.01, 0.06, 0.035],
-                            "Copper": [3.77, 6.75, 5.75],
-                            "Insulated cable": [3.22, 3.44, 3.33],
-                            "Silicon": [2.20, 3.18, 2.69],
-                            "Silver": [453, 653, 582]},
-            virgin_mat_prices={"Product": [np.nan, np.nan, np.nan],
-                            "Aluminum": [1.76, 2.51, 2.14],
-                            "Glass": [0.04, 0.07, 0.055],
-                            "Copper": [4.19, 7.50, 6.39],
-                            "Insulated cable": [3.22, 3.44, 3.33],
-                            "Silicon": [2.20, 3.18, 2.69],
-                            "Silver": [453, 653, 582]},
-            material_waste_ratio={"Product": 0., "Aluminum": 0.,
-                                "Glass": 0., "Copper": 0.,
-                                "Insulated cable": 0., "Silicon": 0.4,
-                                "Silver": 0.},
-            recovery_fractions={"Product": np.nan, "Aluminum": 0.92,
-                                "Glass": 0.85, "Copper": 0.72,
-                                "Insulated cable": 1, "Silicon": 0,
-                                "Silver": 0},
-            product_average_wght=0.1,
-            mass_to_function_reg_coeff=0.03,
-            recycling_states=[
-                'Texas', 'Arizona', 'Oregon', 'Oklahoma',
-                    'Wisconsin', 'Ohio', 'Kentucky', 'South Carolina'],
-            transportation_cost=0.0314,
-            used_product_substitution_rate=[0.6, 1, 0.8],
-            imperfect_substitution=0,
-            epr_business_model=False,
-            recycling_process={"frelp": False, "asu": False,
-                            "hybrid": False},
-            industrial_symbiosis=False,
-            dynamic_lifetime_model={"Dynamic lifetime": False,
-                                    "d_lifetime_intercept": 15.9,
-                                    "d_lifetime_reg_coeff": 0.87,
-                                    "Seed": False, "Year": 5,
-                                    "avg_lifetime": 50},
-            extended_tpb={"Extended tpb": False,
-                        "w_convenience": 0.28, "w_knowledge": -0.51,
-                        "knowledge_distrib": [0.5, 0.49]},
-            seeding={"Seeding": False,
-                    "Year": 10, "number_seed": 50},
-            seeding_recyc={"Seeding": False,
-                    "Year": 10, "number_seed": 50, "discount": 0.35}):
+        ):
         """
         Initiate model
         """
@@ -330,27 +230,15 @@ class SmartphoneModel(Model):
         
         self.prod_n_recyc_node_degree = prod_n_recyc_node_degree
         self.prod_n_recyc_network_type = prod_n_recyc_network_type
-        
+
         self.init_eol_rate = init_eol_rate # dictionary with initial end-of-life (EOL) ratios
         self.init_purchase_choice = init_purchase_rate # dictionary with initial purchase ratios
-        
-        self.total_number_product = total_number_product # a list for the whole population
-        self.copy_total_number_product = self.total_number_product.copy()
-        self.mass_to_function_reg_coeff = mass_to_function_reg_coeff
         
         self.clock = 0
         self.iteration = 0
         self.running = True
         self.color_map = []
-        self.theory_of_planned_behavior = theory_of_planned_behavior
         self.all_eol_pathways = all_eol_pathways
-        self.purchase_options = purchase_choices
-        self.avg_failure_rate = failure_rate_alpha
-        self.original_num_prod = total_number_product
-        self.avg_lifetime = product_lifetime
-        
-        self.fsthand_mkt_pric = fsthand_mkt_pric                        #### delete
-        self.fsthand_mkt_pric_reg_param = fsthand_mkt_pric_reg_param    #### delete
         
         self.avg_new_product_price = 5000   # TBD
         self.avg_used_product_price = 3000   # TBD
@@ -365,68 +253,15 @@ class SmartphoneModel(Model):
         self.consumer_used_product = 0
         self.recycler_repairable_waste = 0
         self.yearly_repaired_waste = 0
-        
-        self.imperfect_substitution = imperfect_substitution
-        perceived_behavioral_control = [np.nan] * len(all_eol_pathways)
-        
-        # Adjacency matrix of trust network: trust of row index into column
-        self.trust_prod = np.asmatrix(np.random.uniform(
-            init_trust_boundaries[0], init_trust_boundaries[1],
-            (self.num_prod_n_recyc, self.num_prod_n_recyc)))
-        np.fill_diagonal(self.trust_prod, 0)
-        
-        self.social_event_boundaries = social_event_boundaries
-        self.trust_threshold = trust_threshold
-        self.knowledge_threshold = knowledge_threshold
-        self.willingness_threshold = willingness_threshold
-        self.willingness = np.asmatrix(np.zeros((self.num_prod_n_recyc, self.num_prod_n_recyc)))
-        self.product_mass_fractions = product_mass_fractions
-        self.material_waste_ratio = material_waste_ratio
-        self.established_scd_mkt = established_scd_mkt
-        self.recovery_fractions = recovery_fractions
-        self.product_average_wght = product_average_wght
-        self.dynamic_product_average_wght = product_average_wght # (kg/fu), MCE: module efficiency
-        self.yearly_product_wght = product_average_wght
-        self.transportation_cost = transportation_cost # ($/t.km) Transportation cost per unit distance
-        self.epr_business_model = epr_business_model
-        self.average_landfill_cost = sum(landfill_cost) / len(landfill_cost)
-        self.industrial_symbiosis = industrial_symbiosis
-        self.installer_recycled_amount = 0
-        
-        # Change eol_pathways depending on business model
-        if self.epr_business_model:
-            self.all_eol_pathways["landfill"] = False
-            self.industrial_symbiosis = False
-        
-        # Dynamic lifetime model
-        self.dynamic_lifetime_model = dynamic_lifetime_model
-        self.extended_tpb = extended_tpb
-        self.seeding = seeding
-        self.seeding_recyc = seeding_recyc
-        self.cost_seeding = 0
-        self.product_lifetime = product_lifetime
-        self.d_product_lifetimes = []
-        self.update_dynamic_lifetime()
-        self.original_recycling_cost = original_recycling_cost
-        self.recycling_process = recycling_process
-        
+
         self.list_consumer_id = list(range(num_consumers))
         random.shuffle(self.list_consumer_id)
-        self.list_consumer_id_seed = list(range(num_consumers))
-        random.shuffle(self.list_consumer_id_seed)
         
         self.new_product_id_price = {}
-        # Change recovery fractions and recycling costs depending on recycling process
-        self.recycling_process_change()
         self.product_growth = product_growth
         self.growth_threshold = growth_threshold
         
-        ####################################################
-        #                                                  #
-        #                  Building graphs                 #
-        #                                                  #
-        ####################################################
-        
+        # ============ Building graphs ============ #
         # Consumer's network
         self.consumer_network = self.init_network(
             network=self.consumers_network_type,
@@ -450,70 +285,23 @@ class SmartphoneModel(Model):
 
         #self.network = nx.disjoint_union(self.consumer_network, self.recycler_network)
         self.network = nx.disjoint_union(
-            nx.disjoint_union(self.consumer_network, self.recycler_network), 
+            nx.disjoint_union(self.consumer_network, self.recycler_network),
             self.sechdstore_network)
         self.grid = NetworkGrid(self.network)
+        ####################################################
 
-        self.all_states = ['Texas', 'California', 'Montana', 'New Mexico',
-                      'Arizona', 'Nevada', 'Colorado', 'Oregon', 'Wyoming',
-                      'Michigan', 'Minnesota', 'Utah', 'Idaho', 'Kansas',
-                      'Nebraska', 'South Dakota', 'Washington',
-                      'North Dakota', 'Oklahoma', 'Missouri', 'Florida',
-                      'Wisconsin', 'Georgia', 'Illinois', 'Iowa',
-                      'New York', 'North Carolina', 'Arkansas', 'Alabama',
-                      'Louisiana', 'Mississippi', 'Pennsylvania', 'Ohio',
-                      'Virginia', 'Tennessee', 'Kentucky', 'Indiana',
-                      'Maine', 'South Carolina', 'West Virginia',
-                      'Maryland', 'Massachusetts', 'Vermont',
-                      'New Hampshire', 'New Jersey', 'Connecticut',
-                      'Delaware', 'Rhode Island']
-        self.states = pd.read_csv("StatesAdjacencyMatrix.csv").to_numpy()
-        # Compute distances
-        self.mean_distance_within_state = np.nanmean(
-            np.where(self.states != 0, self.states, np.nan)) / 2
-        self.states_graph = nx.from_numpy_array(self.states)
-        nodes_states_dic = \
-            dict(zip(list(self.states_graph.nodes),
-                     list(pd.read_csv("StatesAdjacencyMatrix.csv"))))
-        self.states_graph = nx.relabel_nodes(self.states_graph, nodes_states_dic)
-        self.recycling_states = recycling_states
-
-        distances_to_recyclers = []
-        distances_to_recyclers = self.shortest_paths(
-            self.recycling_states, distances_to_recyclers)
-
-        self.mn_mx_av_distance_to_recycler = [ # minimum, maximum, average
-            min(distances_to_recyclers), 
-            max(distances_to_recyclers),
-            sum(distances_to_recyclers) / len(distances_to_recyclers)]
-        
-        # Compute transportation costs
-        self.transportation_cost_rcl = [
-            x * self.transportation_cost / 1E3 * self.dynamic_product_average_wght for x in
-            self.mn_mx_av_distance_to_recycler]
-        
-        self.transportation_cost_rpr_ldf = self.mean_distance_within_state * \
-            self.transportation_cost / 1E3 * self.dynamic_product_average_wght
-        
-        # Add transportation costs to pathways' costs
-        # Recycling_cost
-        self.original_recycling_cost = [sum(x) for x in zip(
-            self.original_recycling_cost, self.transportation_cost_rcl)]
-        
-        original_repairing_cost = [
-            x + self.transportation_cost_rpr_ldf for x in original_repairing_cost]
-        # Landfilling cost
-        landfill_cost = [x + self.transportation_cost_rpr_ldf for x in landfill_cost]
-
-        # self.consumer_agent_set = AgentSet(self)
         # Create agents, G nodes labels are equal to agents' unique_ID
         for node in self.network.nodes():
             #===================== Consumers =====================#
             if node < self.num_consumers:
+                producer_ids = range(
+                    self.num_recyclers + self.num_consumers,
+                    self.num_prod_n_recyc + self.num_consumers)
                 consumer = Consumer(
                     model=self,     # ABM_Model
                     unique_id=node, # agent ID ~ node ID in the network
                     init_purchase_dist=0.1,
+                    preference_id=random.choice(producer_ids)
                     )
                 self.grid.place_agent(consumer, node)  # Add the agent to the node
                 
@@ -530,6 +318,7 @@ class SmartphoneModel(Model):
                 manufacturer = Manufacturer(
                     model=self,
                     unique_id=node,
+                    init_product_price=random.randint(799, 5999)
                     )
                 self.grid.place_agent(manufacturer, node)
                 self.new_product_id_price[node] = manufacturer.product_price
@@ -673,31 +462,6 @@ class SmartphoneModel(Model):
         else:
             return nx.watts_strogatz_graph(nodes, node_degree, rewiring_prob)
 
-    def update_dynamic_lifetime(self):
-        """
-        Update the dynamic product lifetimes based on the model's settings.
-        """
-        if self.dynamic_lifetime_model["Dynamic lifetime"]:
-            self.d_product_lifetimes = [
-                self.dynamic_lifetime_model["d_lifetime_intercept"] +
-                self.dynamic_lifetime_model["d_lifetime_reg_coeff"] *
-                x for x in range(len(self.total_number_product) + self.clock
-                                 + 1)]
-        
-        elif self.dynamic_lifetime_model["Seed"]:
-            self.d_product_lifetimes = \
-                [self.product_lifetime] * \
-                (len(self.total_number_product) + self.clock + 1)
-            if self.clock >= self.dynamic_lifetime_model["Year"]:
-                for i in range(1, self.clock + 2 -
-                               self.dynamic_lifetime_model["Year"]):
-                    self.d_product_lifetimes[-i] = \
-                        self.dynamic_lifetime_model["avg_lifetime"]
-        else:
-            self.d_product_lifetimes = \
-                [self.product_lifetime] * \
-                (len(self.total_number_product) + self.clock + 1)
-
     def waste_generation(self, avg_lifetime, failure_rate, num_product):
         """
         Generate waste, called by consumers and recyclers/refurbishers
@@ -707,104 +471,6 @@ class SmartphoneModel(Model):
         return [j * (1 - math.e ** (-(((self.clock + (correction_year - z)) /
                                avg_lifetime[z]) ** failure_rate))).real
                 for (z, j) in enumerate(num_product)]
-
-    def recycling_process_change(self):
-        """
-        Compute changes to recycling parameters according to the
-        techno-economic analysis of the FRELP, ASU and hybrid recycling
-        processes from Heath et al. unpublished techno-economic analysis.
-        """
-        if self.recycling_process["frelp"]:
-            self.recovery_fractions = {
-                "Product": np.nan, 
-                "Aluminum": 0.994, 
-                "Glass": 0.98,
-                "Copper": 0.97, 
-                "Insulated cable": 1., 
-                "Silicon": 0.97,
-                "Silver": 0.94}
-            self.original_recycling_cost = [0.068, 0.068, 0.068]
-            self.industrial_symbiosis = False
-        
-        elif self.recycling_process["asu"]:
-            self.recovery_fractions = {
-                "Product": np.nan, 
-                "Aluminum": 0.94, 
-                "Glass": 0.99,
-                "Copper": 0.83, 
-                "Insulated cable": 1., 
-                "Silicon": 0.90,
-                "Silver": 0.74}
-            self.original_recycling_cost = [0.153, 0.153, 0.153]
-            self.industrial_symbiosis = False
-        
-        elif self.recycling_process["hybrid"]:
-            self.recovery_fractions = {
-                "Product": np.nan, 
-                "Aluminum": 0.994, 
-                "Glass": 0.98,
-                "Copper": 0.83, 
-                "Insulated cable": 1., 
-                "Silicon": 0.97,
-                "Silver": 0.74}
-            self.original_recycling_cost = [0.055, 0.055, 0.055]
-            self.industrial_symbiosis = False
-
-    def average_mass_per_function_model(self, product_as_function):
-        """
-        Compute the weighted average mass of the product's waste volume (in
-        fu). The weights are the amount of waste for each year. The weighted
-        average mass is returned each time step of the simulation.
-        """
-        if self.clock <= self.growth_threshold:
-            product_growth_rate = self.product_growth[0]
-        else:
-            product_growth_rate = self.product_growth[1]
-        additional_capacity = sum(product_as_function) * product_growth_rate
-        product_as_function.append(additional_capacity)
-        mass_conversion_coeffs = [
-            self.product_average_wght * math.e ** (-self.mass_to_function_reg_coeff * x) 
-                for x in range(len(product_as_function))]
-        self.yearly_product_wght = mass_conversion_coeffs[-1]
-        weighted_average_mass_watt = sum(
-            [product_as_function[i] / sum(product_as_function) *
-             mass_conversion_coeffs[i] for i
-             in range(len(mass_conversion_coeffs))])
-        return weighted_average_mass_watt
-
-    def average_price_per_function_model(self):
-        """
-        Compute the price of first hand products. Price ratio is compared to
-        modules of the same year.
-        """
-        correction_year = len(self.total_number_product)
-        self.fsthand_mkt_pric = self.fsthand_mkt_pric_reg_param[0] * math.e **(
-                -self.fsthand_mkt_pric_reg_param[1] * (self.clock + correction_year))
-
-    def update_lifetime_market(self):
-        """
-        Calculate and return the average prices for new and used products from manufacturers 
-        and second-hand stores respectively.
-        
-        Returns:
-            tuple: (average new product price, average used product price)
-        """
-        all_manufacturers = self.agents_by_type[Manufacturer]
-        self.avg_new_product_price = all_manufacturers.agg('product_price', np.mean)
-        for agent in all_manufacturers:
-            self.new_product_id_price[agent.unique_id] = agent.product_price
-
-        all_sechdsotres = self.agents_by_type[SecondHandStore]
-        self.avg_used_product_price = all_sechdsotres.agg('avg_product_price', np.mean)
-        # return avg_new_product_price, avg_used_product_price
-
-    def update_lifetime_consumer(self):
-        """
-        Update the list of all consumer incomes in the model.
-        """
-        # update consumer incomes
-        self.all_comsumer_income = [
-            agent.income for agent in self.agents if isinstance(agent, Consumer)]
 
     def count_eol_products(self, condition):
         """
@@ -987,13 +653,8 @@ class SmartphoneModel(Model):
         """
         Advance the model by one step and collect data.
         """
-        # 各个Agent的先后顺序问题
         self.agents_by_type[Manufacturer].shuffle_do('step')
         self.agents_by_type[SecondHandStore].shuffle_do('step')
-
-        self.update_lifetime_market()
-        self.update_lifetime_consumer()
-
         self.agents_by_type[Consumer].shuffle_do('step')
         self.agents_by_type[Recycler].shuffle_do('step')
 

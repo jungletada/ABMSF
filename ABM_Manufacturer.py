@@ -40,7 +40,7 @@ class Manufacturer(Agent):
             material_weights=None,
             virgin_material_price=None,
             recycled_material_price=None,
-            material_demand_limits=None,):
+            material_demand_limits=None):
 
         super().__init__(model)
         self.unique_id = unique_id
@@ -65,7 +65,7 @@ class Manufacturer(Agent):
 
         # For pricing strategy
         self.product_price = init_product_price
-        self.features2price =  random.uniform(0.3, 0.8)
+        self.features2price =  random.uniform(0.5, 0.8)
         self.profit_margin = random.uniform(0.1, 0.3)
         self.demand_elasticity = random.uniform(0.02, 0.05)
         self.cost2price_ratio = random.uniform(0.20, 0.40)
