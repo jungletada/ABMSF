@@ -171,15 +171,14 @@ class SmartphoneModel(Model):
 
         # Defines reporters and setup data collector
         model_reporters = {
-            "schedule": lambda c: self.report_output("schedule"),
             "avg_consumer_income": lambda c: self.report_output("income"),
-            # "Agents repairing": lambda c: self.count_eol_products("repairing"),
-            # "Agents selling": lambda c: self.count_eol_products("selling"),
-            # "Agents recycling": lambda c: self.count_eol_products("recycling"),
-            # "Agents landfilling": lambda c: self.count_eol_products("landfilling"),
-            # "Agents storing": lambda c: self.count_eol_products("hoarding"),
-            # "Agents buying new": lambda c: self.count_eol_products("buy_new"),
-            # "Agents buying used": lambda c: self.count_eol_products("buy_used"),
+            "Agents repairing": lambda c: self.count_products_pathway("repairing"),
+            "Agents selling": lambda c: self.count_products_pathway("selling"),
+            "Agents recycling": lambda c: self.count_products_pathway("recycling"),
+            "Agents landfilling": lambda c: self.count_products_pathway("landfilling"),
+            "Agents storing": lambda c: self.count_products_pathway("hoarding"),
+            "Agents buying new": lambda c: self.count_products_pathway("buy_new"),
+            "Agents buying used": lambda c: self.count_products_pathway("buy_used"),
             # "Total product": lambda c:self.report_output("product_stock"),
             # "New product": lambda c:self.report_output("product_stock_new"),
             # "Used product": lambda c:self.report_output("product_stock_used"),
@@ -215,8 +214,6 @@ class SmartphoneModel(Model):
             }
 
         agent_reporters = {
-            "schedule": 
-                lambda c: self.report_output("schedule"),
             # "Number_product_repaired":
             #     lambda a: getattr(a, "number_product_repaired", None),
             # "Number_product_sold":
@@ -308,36 +305,30 @@ class SmartphoneModel(Model):
                                avg_lifetime[z]) ** failure_rate))).real
                 for (z, j) in enumerate(num_product)]
 
-    def count_eol_products(self, condition):
+    def count_products_pathway(self, condition):
         """
         Count adoption in each end of life pathway. Values are then
         reported by model's reporters.
         """
         count = 0
         for agent in self.agents:
-            if agent.unique_id < self.num_consumers:
-                if condition == "repairing" and agent.EoL_pathway == "repair":
+            if isinstance(agent, Consumer):
+                if condition == "repairing" and agent.pathway_action == "repair":
                     count += 1
-                elif condition == "selling" and agent.EoL_pathway == "sell":
+                elif condition == "selling" and agent.pathway_action == "sell":
                     count += 1
-                elif condition == "recycling" and agent.EoL_pathway == "recycle":
+                elif condition == "recycling" and agent.pathway_action == "recycle":
                     count += 1
-                elif condition == "landfilling" and agent.EoL_pathway == "landfill":
+                elif condition == "landfilling" and agent.pathway_action == "landfill":
                     count += 1
-                elif condition == "hoarding" and agent.EoL_pathway == "hoard":
+                elif condition == "hoarding" and agent.pathway_action == "hoard":
                     count += 1
-                elif condition == "buy_new" and agent.purchase_choice == "new":
+                elif condition == "buy_new" and agent.pathway_action == "new":
                     count += 1
-                elif condition == "buy_used" and agent.purchase_choice == "used":
-                    count += 1
-                    self.consumer_used_product += 1
-                elif condition == "buy_certified" and \
-                        agent.purchase_choice == "certified":
+                elif condition == "buy_used" and agent.pathway_action == "used":
                     count += 1
                 else:
                     continue
-            else:
-                continue
         return count
 
     def count_statistics(self):
@@ -373,6 +364,7 @@ class SmartphoneModel(Model):
         for agent in self.agents:
             if condition == "income" and isinstance(agent, Consumer):
                 count = np.mean(self.all_comsumer_income)
+            
         #     elif condition == "product_stock" and agent.unique_id < \
         #             self.num_consumers:
         #         count += sum(agent.number_product_hard_copy)
@@ -458,8 +450,6 @@ class SmartphoneModel(Model):
         #     elif condition == "average_second_hand_price" and \
         #             self.num_consumers + self.num_prod_n_recyc <= agent.unique_id:
         #         count += (-1 * agent.scd_hand_price) / self.num_sechdstores
-        #     elif condition == "schedule":
-        #         count = self.steps
         #     elif condition == "weight":
         #         count = self.dynamic_product_average_wght
         #     elif condition == "recycled_mat_volume" and self.num_consumers + \
