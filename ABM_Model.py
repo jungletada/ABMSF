@@ -17,168 +17,6 @@ from ABM_Manufacturer import Manufacturer
 
 
 class SmartphoneModel(Model):
-    """
-    Attributes:
-        seed (to fix random numbers), (default=None). Modeler's choice.
-        calibration_n_sensitivity1 (use to vary list parameters or
-            dictionnaries), (default=1). Modeler's choice.
-        calibration_n_sensitivity_2 (use to vary list parameters or
-            dictionnaries), (default=1). Modeler's choice.
-        num_consumers, (default=1000). Simplifying assumption
-        consumers_node_degree, (default=5). From Small-World literature.
-        consumers_network_type=("small-world", "complete graph", "random"
-            "cycle graph", "scale-free graph"), (default="small-world").
-            From Small-World literature (e.g., Byrka et al. 2016).
-        num_recyclers, (default=16). 16 From SEIA, 2019.
-        num_producers, (default=60). Simplifying assumption.
-        prod_n_recyc_node_degree, (default=5). From Small-World literature.
-        prod_n_recyc_network_type, (default="small-world"). From Small-World
-            and industrial symbiosis literature (e.g., Doménech & Davies,
-            2011).
-        num_refurbishers, (default=15). From Wood Mackenzie, 2019.
-        consumers_distribution (allocation of different types of consumers),
-            (default={"residential": 1, "commercial": 0., "utility": 0.}).
-            (Other possible values based on EIA, 2019 and SBE council, 2019:
-            residential=0.75, commercial=0.2 and utility=0.05).
-        init_eol_rate (dictionary with initial end-of-life (EOL) ratios),
-            (default={"repair": 0.005, "sell": 0.02, "recycle": 0.1,
-            "landfill": 0.4375, "hoard": 0.4375}). From Monteiro Lunardi
-            et al 2018 and European Commission (2015).
-        init_purchase_choice (dictionary with initial purchase ratios),
-            (default={"new": 0.98, "used": 0.02, "certified": 0}). From
-            European Commission (2015).
-        total_number_product (a list for the whole population e.g.
-            (time series of product quantity)) (in unit of functional
-            unit (fu), examples of fu: Wp for PV, Bit for hard drive), (
-            default=[38, 38, 38, 38, 38, 38, 38, 139, 251, 378, 739, 1670,
-            2935, 4146, 5432, 6525, 3609, 4207, 4905, 5719]). From IRENA-IEA
-            2016 (assuming that 87% of the PV market is c-Si).
-        product_distribution (ratios of product among consumer types), (default
-            ={"residential": 1, "commercial": 0., "utility": 0.}). (Other
-            possible values based on Bolinger et al. 2018: residential=0.21,
-            commercial=0.18 and utility=0.61).
-        product_growth (a list for a piecewise function) (ratio), (default=
-            [0.166, 0.045]). From IRENA-IEA 2016
-        growth_threshold, (default=10). From IRENA-IEA 2016
-        failure_rate_alpha (a list for a triangular distribution), (default=
-            [2.4928, 5.3759, 3.93495]). From IRENA-IEA 2016.
-        hoarding_cost (a list for a triangular distribution) ($/fu), (default=
-            [0, 0.001, 0.0005]). From www.cisco-eagle.com (accessed 12/2019).
-        landfill_cost (a list for a triangular distribution) ($/fu), (default=
-            [0.0089, 0.0074, 0.0071, 0.0069, 0.0056, 0.0043,
-                     0.0067, 0.0110, 0.0085, 0.0082, 0.0079, 0.0074, 0.0069,
-                     0.0068, 0.0068, 0.0052, 0.0052, 0.0051, 0.0074, 0.0062,
-                     0.0049, 0.0049, 0.0047, 0.0032, 0.0049, 0.0065, 0.0064,
-                     0.0062, 0.0052, 0.0048, 0.0048, 0.0044, 0.0042, 0.0039,
-                     0.0039, 0.0045, 0.0055, 0.0050, 0.0049, 0.0044, 0.0044,
-                     0.0039, 0.0033, 0.0030, 0.0041, 0.0050, 0.0040, 0.0040,
-                     0.0038, 0.0033]). From EREF 2019.
-        w_sn_eol (the weight of subjective norm in the agents' decisions as
-            modeled with the theory of planned behavior), (default=0.33). From
-            Geiger et al. 2019.
-        w_pbc_eol (the weight of perceived behavioral control in the agents'
-            decisions as modeled with the theory of planned behavior), (
-            default=0.39). From Geiger et al. 2019.
-        w_a_eol (the weight of attitude in the agents' decisions as modeled
-            with the theory of planned behavior), (default=0.34). From
-            Geiger et al. 2019.
-        w_sn_reuse (same as above but for remanufactured product purchase
-            decision), (default=0.497). From Singhal et al. 2019.
-        w_pbc_reuse (same as above but for remanufactured product purchase
-            decision), (default=0.382). From Singhal et al. 2019.
-        w_a_reuse (same as above but for remanufactured product purchase
-            decision), (default=0.464). From Singhal et al. 2019.
-        product_lifetime (years), (default=30). From IRENA-IEA 2016.
-        all_EoL_pathways (dictionary of booleans for EOL pathways), (default=
-            {"repair": True, "sell": False, "recycle": True, "landfill": False,
-            "hoard": True}). Modeler's choice.
-        max_storage (a list for a triangular distribution) (years), (default=
-            [1, 8, 4]). From Wilson et al. 2017.
-        att_distrib_param_eol (a list for a bounded normal distribution), (
-            default=[0.53, 0.12]). From model's calibration step (mean),
-            Saphores 2012 (standard deviation).
-        att_distrib_param_eol (a list for a bounded normal distribution), (
-            default=[0.35, 0.2]). From model's calibration step (mean),
-            Abbey et al. 2016 (standard deviation).
-        original_recycling_cost (a list for a triangular distribution) ($/fu) (
-            default=[0.106, 0.128, 0.117]). From EPRI 2018.
-        recycling_learning_shape_factor, (default=-0.39). From Qiu & Suh 2019.
-        repairability (ratio), (default=0.55). From Tsanakas et al. 2019.
-        original_repairing_cost (a list for a triangular distribution) ($/fu),
-            (default=[0.1, 0.45, 0.28]). From Tsanakas et al. 2019.
-        repairing_learning_shape_factor, (default=-0.31). Estimated with data
-            on repairing costs at different scales from JRC 2019.
-        scndhand_mkt_pric_rate (a list for a triangular distribution) (ratio),
-            (default=[0.4, 1, 0.7]). From unpublished study Wang et al.
-        fsthand_mkt_pric ($/fu), (default=0.3). From Wood Mackenzie, 2019.
-        refurbisher_margin (ratio), (default=[0.03, 0.45, 0.24]). From Duvan
-            & Aykaç 2008 and www.investopedia.com (accessed 03/2020).
-        purchase_choices (dictionary of booleans for purchase choice), (default
-            ={"new": True, "used": True, "certified": False}).
-            Modeler's choice.
-        init_trust_boundaries (from Ghali et al. 2017)
-        social_event_boundaries (from Ghali et al. 2017)
-        social_influencability_boundaries (from Ghali et al. 2017)
-        trust_threshold (from Ghali et al. 2017)
-        knowledge_threshold (from Ghali et al. 2017)
-        willingness_threshold (from Ghali et al. 2017)
-        self_confidence_boundaries (from Ghali et al. 2017)
-        product_mass_fractions (dictionary containing mass fractions of
-            materials composing the product), (default={"Product": 1,
-            "Aluminum": 0.08, "Glass": 0.76, "Copper": 0.01, "Insulated cable"
-            : 0.012, "Silicon": 0.036, "Silver": 0.00032}). From ITRPV, 2015,
-            2018.
-        established_scd_mkt (dictionary containing booleans regarding the
-            availability of an industrial pathway for the recovered material),
-            (default={"Product": True, "Aluminum": True, "Glass": True,
-            "Copper": True, "Insulated cable": True, "Silicon": False,
-            "Silver": False}). Modeler's choice.
-        scd_mat_prices (dictionary containing lists for triangular
-            distributions of secondary materials prices) ($/fu), (default={
-            "Product": [np.nan, np.nan, np.nan], "Aluminum": [0.66, 1.98,
-            1.32], "Glass": [0.01, 0.06, 0.035], "Copper": [3.77, 6.75, 5.75],
-            "Insulated cable": [3.22, 3.44, 3.33], "Silicon": [2.20, 3.18,
-            2.69], "Silver": [453, 653, 582]}). From www.Infomine.com (2019),
-            copper.org (2019), USGS (2017), Bureau of Labor Statistics (2018),
-            www.recyclingproductnews.com (all websites accessed 03/2020).
-        virgin_mat_prices (dictionary containing lists for triangular
-            distributions of virgin materials prices) ($/fu), (default={
-            "Product": [np.nan, np.nan, np.nan], "Aluminum": [1.76, 2.51,
-            2.14], "Glass": [0.04, 0.07, 0.055], "Copper": [4.19, 7.50, 6.39],
-            "Insulated cable": [3.22, 3.44, 3.33], "Silicon": [2.20, 3.18,
-            2.69], "Silver": [453, 653, 582]}). From Butler et al. (2005),
-            Newlove  (2017), USGS (2017), www.infomine.com (2019), expert
-            opinions (for insulated cables) (all websites accessed 03/2020).
-        material_waste_ratio (dictionary containing industrial waste ratios),
-            (default={"Product": 0., "Aluminum": 0., "Glass": 0., "Copper": 0.,
-            "Insulated cable": 0., "Silicon": 0.4, "Silver": 0.}). From
-            Hachichi 2018.
-        recovery_fractions (dictionary containing recovery fractions of
-            materials composing the product when recycled), (default={
-            "Product": np.nan, "Aluminum": 0.92, "Glass": 0.85, "Copper": 0.72,
-            "Insulated cable": 1, "Silicon": 0,
-            "Silver": 0}). From Ardente et al. 2019 and IEA-PVPS task-12 2018.
-        product_average_wght (kg/fu), (default=0.1). From IRENA-IEA 2016.
-        mass_to_function_reg_coeff, (default=0.03). Estimated with data from
-            IRENA-IEA 2016.
-        recycling_states (a list of states owning at least one recycling
-            facility), (default=['Texas', 'Arizona', 'Oregon', 'Oklahoma',
-            'Wisconsin', 'Ohio', 'Kentucky', 'South Carolina']. From SEIA 2019.
-        transportation_cost ($/t.km), (default=0.021761). From ecoinvent 2020.
-        used_product_substitution_rate (a list for a triangular distribution)
-            (ratio), (default=[0.6, 1, 0.8]). From unpublished study Wang et
-            al.
-        imperfect_substitution (model rebound effect) (ratio), (default=0).
-            Modeler's choice.
-        epr_business_model (boolean) (assume that enhanced producer
-            responsibility means that product are recycled at the end of life
-            as well as industrial waste), (default=False). Modeler's choice.
-        recycling_process (dictionary of booleans), (default={"frelp": False,
-            "asu": False, "hybrid": False}). Modeler's choice.
-        industrial_symbiosis (boolean), (default=False). Modeler's choice.
-
-    """
-
     def __init__(
             self,
             seed=None,
@@ -234,6 +72,7 @@ class SmartphoneModel(Model):
         self.init_eol_rate = init_eol_rate # dictionary with initial end-of-life (EOL) ratios
         self.init_purchase_choice = init_purchase_rate # dictionary with initial purchase ratios
         
+        self.init_product_prices = np.linspace(799, 7999, num_producers)
         self.clock = 0
         self.iteration = 0
         self.running = True
@@ -289,7 +128,6 @@ class SmartphoneModel(Model):
             self.sechdstore_network)
         self.grid = NetworkGrid(self.network)
         ####################################################
-
         # Create agents, G nodes labels are equal to agents' unique_ID
         for node in self.network.nodes():
             #===================== Consumers =====================#
@@ -315,10 +153,11 @@ class SmartphoneModel(Model):
 
             elif node < self.num_prod_n_recyc + self.num_consumers:
                 #===================== Producers =====================#
+                producer_index = node - self.num_recyclers - self.num_consumers
                 manufacturer = Manufacturer(
                     model=self,
                     unique_id=node,
-                    init_product_price=random.randint(799, 5999)
+                    init_product_price=int(self.init_product_prices[producer_index])
                     )
                 self.grid.place_agent(manufacturer, node)
                 self.new_product_id_price[node] = manufacturer.product_price
@@ -330,98 +169,95 @@ class SmartphoneModel(Model):
                     )
                 self.grid.place_agent(sechdstore, node)
 
-        # Draw initial graph
-        # nx.draw(self.G, with_labels=True)
-        # plt.show()
+        # Defines reporters and setup data collector
+        model_reporters = {
+            "schedule": lambda c: self.report_output("schedule"),
+            "avg_consumer_income": lambda c: self.report_output("income"),
+            # "Agents repairing": lambda c: self.count_eol_products("repairing"),
+            # "Agents selling": lambda c: self.count_eol_products("selling"),
+            # "Agents recycling": lambda c: self.count_eol_products("recycling"),
+            # "Agents landfilling": lambda c: self.count_eol_products("landfilling"),
+            # "Agents storing": lambda c: self.count_eol_products("hoarding"),
+            # "Agents buying new": lambda c: self.count_eol_products("buy_new"),
+            # "Agents buying used": lambda c: self.count_eol_products("buy_used"),
+            # "Total product": lambda c:self.report_output("product_stock"),
+            # "New product": lambda c:self.report_output("product_stock_new"),
+            # "Used product": lambda c:self.report_output("product_stock_used"),
+            # "New product_mass": lambda c:self.report_output("prod_stock_new_mass"),
+            # "Used product_mass": lambda c:self.report_output("prod_stock_used_mass"),
+            # "EoL-repaired": lambda c:self.report_output("product_repaired"),
+            # "EoL-sold": lambda c: self.report_output("product_sold"),
+            # "EoL-recycled": lambda c:self.report_output("product_recycled"),
+            # "EoL-landfilled": lambda c:self.report_output("product_landfilled"),
+            # "EoL-stored": lambda c:self.report_output("product_hoarded"),
+            # "EoL-new repaired weight": lambda c:self.report_output("product_new_repaired"),
+            # "EoL-new sold weight": lambda c:self.report_output("product_new_sold"),
+            # "EoL-new recycled weight": lambda c:self.report_output("product_new_recycled"),
+            # "EoL-new landfilled weight": lambda c:self.report_output("product_new_landfilled"),
+            # "EoL-new stored weight": lambda c:self.report_output("product_new_hoarded"),
+            # "EoL-used repaired weight": lambda c:self.report_output("product_used_repaired"),
+            # "EoL-used sold weight": lambda c:self.report_output("product_used_sold"),
+            # "EoL-used recycled weight": lambda c:self.report_output("product_used_recycled"),
+            # "EoL-used landfilled weight": lambda c:self.report_output("product_used_landfilled"),
+            # "EoL-used stored weight": lambda c:self.report_output("product_used_hoarded"),
+            # "Average landfilling cost": lambda c:self.report_output("average_landfill_cost"),
+            # "Average storing cost": lambda c:self.report_output("average_hoarding_cost"),
+            # "Average recycling cost": lambda c:self.report_output("average_recycling_cost"),
+            # "Average repairing cost": lambda c:self.report_output("average_repairing_cost"),
+            # "Average selling cost": lambda c:self.report_output("average_second_hand_price"),
+            # "Recycled material volume": lambda c:self.report_output("recycled_mat_volume"),
+            # "Recycled material value": lambda c:self.report_output("recycled_mat_value"),
+            # "Producer costs": lambda c:self.report_output("producer_costs"),
+            # "Consumer costs": lambda c:self.report_output("consumer_costs"),
+            # "Recycler costs": lambda c:self.report_output("recycler_costs"),
+            # "Refurbisher costs": lambda c:self.report_output("refurbisher_costs"),
+            # "Refurbisher costs w margins": lambda c:self.report_output("refurbisher_costs_w_margins")
+            }
 
-        # Defines reporters and set up data collector
-        # model_reporters = {
-        #     "Year": lambda c: self.report_output("year"),
-        #     "Average weight of waste": lambda c: self.report_output("weight"),
-        #     "Agents repairing": lambda c: self.count_eol_products("repairing"),
-        #     "Agents selling": lambda c: self.count_eol_products("selling"),
-        #     "Agents recycling": lambda c: self.count_eol_products("recycling"),
-        #     "Agents landfilling": lambda c: self.count_eol_products("landfilling"),
-        #     "Agents storing": lambda c: self.count_eol_products("hoarding"),
-        #     "Agents buying new": lambda c: self.count_eol_products("buy_new"),
-        #     "Agents buying used": lambda c: self.count_eol_products("buy_used"),
-        #     "Agents buying certified": lambda c: self.count_eol_products("certified"),
-        #     "Total product": lambda c:self.report_output("product_stock"),
-        #     "New product": lambda c:self.report_output("product_stock_new"),
-        #     "Used product": lambda c:self.report_output("product_stock_used"),
-        #     "New product_mass": lambda c:self.report_output("prod_stock_new_mass"),
-        #     "Used product_mass": lambda c:self.report_output("prod_stock_used_mass"),
-        #     "EoL-repaired": lambda c:self.report_output("product_repaired"),
-        #     "EoL-sold": lambda c: self.report_output("product_sold"),
-        #     "EoL-recycled": lambda c:self.report_output("product_recycled"),
-        #     "EoL-landfilled": lambda c:self.report_output("product_landfilled"),
-        #     "EoL-stored": lambda c:self.report_output("product_hoarded"),
-        #     "EoL-new repaired weight": lambda c:self.report_output("product_new_repaired"),
-        #     "EoL-new sold weight": lambda c:self.report_output("product_new_sold"),
-        #     "EoL-new recycled weight": lambda c:self.report_output("product_new_recycled"),
-        #     "EoL-new landfilled weight": lambda c:self.report_output("product_new_landfilled"),
-        #     "EoL-new stored weight": lambda c:self.report_output("product_new_hoarded"),
-        #     "EoL-used repaired weight": lambda c:self.report_output("product_used_repaired"),
-        #     "EoL-used sold weight": lambda c:self.report_output("product_used_sold"),
-        #     "EoL-used recycled weight": lambda c:self.report_output("product_used_recycled"),
-        #     "EoL-used landfilled weight": lambda c:self.report_output("product_used_landfilled"),
-        #     "EoL-used stored weight": lambda c:self.report_output("product_used_hoarded"),
-        #     "Average landfilling cost": lambda c:self.report_output("average_landfill_cost"),
-        #     "Average storing cost": lambda c:self.report_output("average_hoarding_cost"),
-        #     "Average recycling cost": lambda c:self.report_output("average_recycling_cost"),
-        #     "Average repairing cost": lambda c:self.report_output("average_repairing_cost"),
-        #     "Average selling cost": lambda c:self.report_output("average_second_hand_price"),
-        #     "Recycled material volume": lambda c:self.report_output("recycled_mat_volume"),
-        #     "Recycled material value": lambda c:self.report_output("recycled_mat_value"),
-        #     "Producer costs": lambda c:self.report_output("producer_costs"),
-        #     "Consumer costs": lambda c:self.report_output("consumer_costs"),
-        #     "Recycler costs": lambda c:self.report_output("recycler_costs"),
-        #     "Refurbisher costs": lambda c:self.report_output("refurbisher_costs"),
-        #     "Refurbisher costs w margins": lambda c:self.report_output("refurbisher_costs_w_margins")}
+        agent_reporters = {
+            "schedule": 
+                lambda c: self.report_output("schedule"),
+            # "Number_product_repaired":
+            #     lambda a: getattr(a, "number_product_repaired", None),
+            # "Number_product_sold":
+            #     lambda a: getattr(a, "number_product_sold", None),
+            # "Number_product_recycled":
+            #     lambda a: getattr(a, "number_product_recycled", None),
+            # "Number_product_landfilled":
+            #     lambda a: getattr(a, "number_product_landfilled", None),
+            # "Number_product_hoarded":
+            #     lambda a: getattr(a, "number_product_hoarded", None),
+            # "Recycling":
+            #     lambda a: getattr(a, "EoL_pathway", None),
+            # "Landfilling costs":
+            #     lambda a: getattr(a, "landfill_cost", None),
+            # "Storing costs":
+            #     lambda a: getattr(a, "hoarding_cost", None),
+            # "Recycling costs":
+            #     lambda a: getattr(a, "recycling_cost", None),
+            # "Repairing costs":
+            #     lambda a: getattr(a, "repairing_cost", None),
+            # "Selling costs":
+            #     lambda a: getattr(a, "scd_hand_price", None),
+            # "Material produced":
+            #     lambda a: getattr(a, "material_produced", None),
+            # "Recycled volume":
+            #     lambda a: getattr(a, "recycled_material_volume", None),
+            # "Recycled value":
+            #     lambda a: getattr(a, "recycled_material_value", None),
+            # "Producer costs":
+            #     lambda a: getattr(a, "producer_costs", None),
+            # "Consumer costs":
+            #     lambda a: getattr(a, "consumer_costs", None),
+            # "Recycler costs":
+            #     lambda a: getattr(a, "recycler_costs", None),
+            # "Refurbisher costs":
+            #     lambda a: getattr(a, "refurbisher_costs", None)
+            }
 
-        # agent_reporters = {
-        #     "Year": 
-        #         lambda c: self.report_output("year"),
-        #     "Number_product_repaired":
-        #         lambda a: getattr(a, "number_product_repaired", None),
-        #     "Number_product_sold":
-        #         lambda a: getattr(a, "number_product_sold", None),
-        #     "Number_product_recycled":
-        #         lambda a: getattr(a, "number_product_recycled", None),
-        #     "Number_product_landfilled":
-        #         lambda a: getattr(a, "number_product_landfilled", None),
-        #     "Number_product_hoarded":
-        #         lambda a: getattr(a, "number_product_hoarded", None),
-        #     "Recycling":
-        #         lambda a: getattr(a, "EoL_pathway", None),
-        #     "Landfilling costs":
-        #         lambda a: getattr(a, "landfill_cost", None),
-        #     "Storing costs":
-        #         lambda a: getattr(a, "hoarding_cost", None),
-        #     "Recycling costs":
-        #         lambda a: getattr(a, "recycling_cost", None),
-        #     "Repairing costs":
-        #         lambda a: getattr(a, "repairing_cost", None),
-        #     "Selling costs":
-        #         lambda a: getattr(a, "scd_hand_price", None),
-        #     "Material produced":
-        #         lambda a: getattr(a, "material_produced", None),
-        #     "Recycled volume":
-        #         lambda a: getattr(a, "recycled_material_volume", None),
-        #     "Recycled value":
-        #         lambda a: getattr(a, "recycled_material_value", None),
-        #     "Producer costs":
-        #         lambda a: getattr(a, "producer_costs", None),
-        #     "Consumer costs":
-        #         lambda a: getattr(a, "consumer_costs", None),
-        #     "Recycler costs":
-        #         lambda a: getattr(a, "recycler_costs", None),
-        #     "Refurbisher costs":
-        #         lambda a: getattr(a, "refurbisher_costs", None)}
-
-        # self.datacollector = DataCollector(
-        #     model_reporters=model_reporters,
-        #     agent_reporters=agent_reporters)
+        self.datacollector = DataCollector(
+            model_reporters=model_reporters,
+            agent_reporters=agent_reporters)
         
     def shortest_paths(self, target_states, distances_to_target):
         """
@@ -478,7 +314,7 @@ class SmartphoneModel(Model):
         reported by model's reporters.
         """
         count = 0
-        for agent in self.schedule.agents:
+        for agent in self.agents:
             if agent.unique_id < self.num_consumers:
                 if condition == "repairing" and agent.EoL_pathway == "repair":
                     count += 1
@@ -504,6 +340,9 @@ class SmartphoneModel(Model):
                 continue
         return count
 
+    def count_statistics(self):
+        self.all_comsumer_income = [agent.income for agent in self.agents_by_type[Consumer]]
+
     def report_output(self, condition):
         """
         Count waste streams in each end of life pathway. Values are then
@@ -515,148 +354,153 @@ class SmartphoneModel(Model):
         industrial_waste_recycled = 0
         industrial_waste_landfill_mass = 0
         industrial_waste_recycled_mass = 0
-        for agent in self.schedule.agents:
-            if self.num_consumers + self.num_recyclers <= agent.unique_id < \
-                    self.num_consumers + self.num_prod_n_recyc:
-                if self.epr_business_model:
-                    industrial_waste_recycled += \
-                        agent.industrial_waste_generated / self.num_consumers
-                    industrial_waste_recycled_mass += \
-                        self.yearly_product_wght * \
-                        agent.industrial_waste_generated / self.num_consumers
-                else:
-                    industrial_waste_landfill += \
-                        agent.industrial_waste_generated / self.num_consumers
-                    industrial_waste_landfill_mass += \
-                        self.yearly_product_wght * \
-                        agent.industrial_waste_generated / self.num_consumers
-        for agent in self.schedule.agents:
-            if condition == "product_stock" and agent.unique_id < \
-                    self.num_consumers:
-                count += sum(agent.number_product_hard_copy)
-            elif condition == "product_stock_new" and agent.unique_id < \
-                    self.num_consumers:
-                count += sum(agent.new_products_hard_copy)
-            if condition == "product_stock_used" and agent.unique_id < \
-                    self.num_consumers:
-                count += sum(agent.used_products_hard_copy)
-            elif condition == "prod_stock_new_mass" and agent.unique_id < \
-                    self.num_consumers:
-                count += agent.new_products_mass
-            if condition == "prod_stock_used_mass" and agent.unique_id < \
-                    self.num_consumers:
-                count += agent.used_products_mass
-            elif condition == "product_repaired" and agent.unique_id < \
-                    self.num_consumers:
-                count += agent.number_product_repaired
-            elif condition == "product_sold" and agent.unique_id < \
-                    self.num_consumers:
-                count += agent.number_product_sold
-                count2 += agent.number_product_sold
-                count2 += agent.number_product_repaired
-            elif condition == "product_recycled" and agent.unique_id < \
-                    self.num_consumers:
-                count += agent.number_product_recycled
-                count += industrial_waste_recycled
-            elif condition == "product_landfilled" and agent.unique_id < \
-                    self.num_consumers:
-                count += agent.number_product_landfilled
-                count += industrial_waste_landfill
-            elif condition == "product_hoarded" and agent.unique_id < \
-                    self.num_consumers:
-                count += agent.number_product_hoarded
-            elif condition == "product_new_repaired" and agent.unique_id < \
-                    self.num_consumers:
-                count += agent.number_new_prod_repaired
-            elif condition == "product_new_sold" and agent.unique_id < \
-                    self.num_consumers:
-                count += agent.number_new_prod_sold
-            elif condition == "product_new_recycled" and agent.unique_id < \
-                    self.num_consumers:
-                count += agent.number_new_prod_recycled
-                count += industrial_waste_recycled_mass
-            elif condition == "product_new_landfilled" and agent.unique_id < \
-                    self.num_consumers:
-                count += agent.number_new_prod_landfilled
-                count += industrial_waste_landfill_mass
-            elif condition == "product_new_hoarded" and agent.unique_id < \
-                    self.num_consumers:
-                count += agent.number_new_prod_hoarded
-            elif condition == "product_used_repaired" and agent.unique_id < \
-                    self.num_consumers:
-                count += agent.number_used_prod_repaired
-            elif condition == "product_used_sold" and agent.unique_id < \
-                    self.num_consumers:
-                count += agent.number_used_prod_sold
-            elif condition == "product_used_recycled" and agent.unique_id < \
-                    self.num_consumers:
-                count += agent.number_used_prod_recycled
-            elif condition == "product_used_landfilled" and agent.unique_id < \
-                    self.num_consumers:
-                count += agent.number_used_prod_landfilled
-            elif condition == "product_used_hoarded" and agent.unique_id < \
-                    self.num_consumers:
-                count += agent.number_used_prod_hoarded
-            elif condition == "consumer_costs" and agent.unique_id < \
-                    self.num_consumers:
-                count += agent.consumer_costs
-            elif condition == "average_landfill_cost" and agent.unique_id < \
-                    self.num_consumers:
-                count += agent.landfill_cost / self.num_consumers
-            elif condition == "average_hoarding_cost" and agent.unique_id < \
-                    self.num_consumers:
-                count += agent.hoarding_cost / self.num_consumers
-            elif condition == "average_recycling_cost" and self.num_consumers\
-                    <= agent.unique_id < self.num_consumers + \
-                    self.num_recyclers:
-                count += agent.recycling_cost / self.num_recyclers
-            elif condition == "average_repairing_cost" and self.num_consumers\
-                    + self.num_prod_n_recyc <= agent.unique_id:
-                count += agent.repairing_cost / self.num_sechdstores
-            elif condition == "average_second_hand_price" and \
-                    self.num_consumers + self.num_prod_n_recyc <= agent.unique_id:
-                count += (-1 * agent.scd_hand_price) / self.num_sechdstores
-            elif condition == "year":
-                count = 2020 + self.clock
-            elif condition == "weight":
-                count = self.dynamic_product_average_wght
-            elif condition == "recycled_mat_volume" and self.num_consumers + \
-                    self.num_recyclers <= agent.unique_id < \
-                    self.num_consumers + self.num_prod_n_recyc:
-                if not np.isnan(agent.recycled_material_volume):
-                    count += agent.recycled_material_volume
-            elif condition == "recycled_mat_value" and self.num_consumers + \
-                    self.num_recyclers <= agent.unique_id < \
-                    self.num_consumers + self.num_prod_n_recyc:
-                if not np.isnan(agent.recycled_material_value):
-                    count += agent.recycled_material_value
-            elif condition == "producer_costs" and self.num_consumers + \
-                    self.num_recyclers <= agent.unique_id < \
-                    self.num_consumers + self.num_prod_n_recyc:
-                count += agent.producer_costs
-            elif condition == "recycler_costs" and self.num_consumers <= \
-                    agent.unique_id < self.num_consumers + \
-                    self.num_recyclers:
-                count += agent.recycler_costs
-            elif condition == "refurbisher_costs" and self.num_consumers + \
-                    self.num_prod_n_recyc <= agent.unique_id:
-                count += agent.refurbisher_costs
-            elif condition == "refurbisher_costs_w_margins" and self.num_consumers + \
-                    self.num_prod_n_recyc <= agent.unique_id:
-                count += agent.refurbisher_costs_w_margins
-        if condition == "product_sold":
-            self.sold_repaired_waste += count2 - self.past_sold_repaired_waste
-            self.past_sold_repaired_waste = count2
+        # for agent in self.agents:
+        #     if self.num_consumers + self.num_recyclers <= agent.unique_id < \
+        #             self.num_consumers + self.num_prod_n_recyc:
+        #         if self.epr_business_model:
+        #             industrial_waste_recycled += \
+        #                 agent.industrial_waste_generated / self.num_consumers
+        #             industrial_waste_recycled_mass += \
+        #                 self.yearly_product_wght * \
+        #                 agent.industrial_waste_generated / self.num_consumers
+        #         else:
+        #             industrial_waste_landfill += \
+        #                 agent.industrial_waste_generated / self.num_consumers
+        #             industrial_waste_landfill_mass += \
+        #                 self.yearly_product_wght * \
+        #                 agent.industrial_waste_generated / self.num_consumers
+        
+        for agent in self.agents:
+            if condition == "income" and isinstance(agent, Consumer):
+                count = np.mean(self.all_comsumer_income)
+        #     elif condition == "product_stock" and agent.unique_id < \
+        #             self.num_consumers:
+        #         count += sum(agent.number_product_hard_copy)
+        #     elif condition == "product_stock_new" and agent.unique_id < \
+        #             self.num_consumers:
+        #         count += sum(agent.new_products_hard_copy)
+        #     if condition == "product_stock_used" and agent.unique_id < \
+        #             self.num_consumers:
+        #         count += sum(agent.used_products_hard_copy)
+        #     elif condition == "prod_stock_new_mass" and agent.unique_id < \
+        #             self.num_consumers:
+        #         count += agent.new_products_mass
+        #     if condition == "prod_stock_used_mass" and agent.unique_id < \
+        #             self.num_consumers:
+        #         count += agent.used_products_mass
+        #     elif condition == "product_repaired" and agent.unique_id < \
+        #             self.num_consumers:
+        #         count += agent.number_product_repaired
+        #     elif condition == "product_sold" and agent.unique_id < \
+        #             self.num_consumers:
+        #         count += agent.number_product_sold
+        #         count2 += agent.number_product_sold
+        #         count2 += agent.number_product_repaired
+        #     elif condition == "product_recycled" and agent.unique_id < \
+        #             self.num_consumers:
+        #         count += agent.number_product_recycled
+        #         count += industrial_waste_recycled
+        #     elif condition == "product_landfilled" and agent.unique_id < \
+        #             self.num_consumers:
+        #         count += agent.number_product_landfilled
+        #         count += industrial_waste_landfill
+        #     elif condition == "product_hoarded" and agent.unique_id < \
+        #             self.num_consumers:
+        #         count += agent.number_product_hoarded
+        #     elif condition == "product_new_repaired" and agent.unique_id < \
+        #             self.num_consumers:
+        #         count += agent.number_new_prod_repaired
+        #     elif condition == "product_new_sold" and agent.unique_id < \
+        #             self.num_consumers:
+        #         count += agent.number_new_prod_sold
+        #     elif condition == "product_new_recycled" and agent.unique_id < \
+        #             self.num_consumers:
+        #         count += agent.number_new_prod_recycled
+        #         count += industrial_waste_recycled_mass
+        #     elif condition == "product_new_landfilled" and agent.unique_id < \
+        #             self.num_consumers:
+        #         count += agent.number_new_prod_landfilled
+        #         count += industrial_waste_landfill_mass
+        #     elif condition == "product_new_hoarded" and agent.unique_id < \
+        #             self.num_consumers:
+        #         count += agent.number_new_prod_hoarded
+        #     elif condition == "product_used_repaired" and agent.unique_id < \
+        #             self.num_consumers:
+        #         count += agent.number_used_prod_repaired
+        #     elif condition == "product_used_sold" and agent.unique_id < \
+        #             self.num_consumers:
+        #         count += agent.number_used_prod_sold
+        #     elif condition == "product_used_recycled" and agent.unique_id < \
+        #             self.num_consumers:
+        #         count += agent.number_used_prod_recycled
+        #     elif condition == "product_used_landfilled" and agent.unique_id < \
+        #             self.num_consumers:
+        #         count += agent.number_used_prod_landfilled
+        #     elif condition == "product_used_hoarded" and agent.unique_id < \
+        #             self.num_consumers:
+        #         count += agent.number_used_prod_hoarded
+        #     elif condition == "consumer_costs" and agent.unique_id < \
+        #             self.num_consumers:
+        #         count += agent.consumer_costs
+        #     elif condition == "average_landfill_cost" and agent.unique_id < \
+        #             self.num_consumers:
+        #         count += agent.landfill_cost / self.num_consumers
+        #     elif condition == "average_hoarding_cost" and agent.unique_id < \
+        #             self.num_consumers:
+        #         count += agent.hoarding_cost / self.num_consumers
+        #     elif condition == "average_recycling_cost" and self.num_consumers\
+        #             <= agent.unique_id < self.num_consumers + \
+        #             self.num_recyclers:
+        #         count += agent.recycling_cost / self.num_recyclers
+        #     elif condition == "average_repairing_cost" and self.num_consumers\
+        #             + self.num_prod_n_recyc <= agent.unique_id:
+        #         count += agent.repairing_cost / self.num_sechdstores
+        #     elif condition == "average_second_hand_price" and \
+        #             self.num_consumers + self.num_prod_n_recyc <= agent.unique_id:
+        #         count += (-1 * agent.scd_hand_price) / self.num_sechdstores
+        #     elif condition == "schedule":
+        #         count = self.steps
+        #     elif condition == "weight":
+        #         count = self.dynamic_product_average_wght
+        #     elif condition == "recycled_mat_volume" and self.num_consumers + \
+        #             self.num_recyclers <= agent.unique_id < \
+        #             self.num_consumers + self.num_prod_n_recyc:
+        #         if not np.isnan(agent.recycled_material_volume):
+        #             count += agent.recycled_material_volume
+        #     elif condition == "recycled_mat_value" and self.num_consumers + \
+        #             self.num_recyclers <= agent.unique_id < \
+        #             self.num_consumers + self.num_prod_n_recyc:
+        #         if not np.isnan(agent.recycled_material_value):
+        #             count += agent.recycled_material_value
+        #     elif condition == "producer_costs" and self.num_consumers + \
+        #             self.num_recyclers <= agent.unique_id < \
+        #             self.num_consumers + self.num_prod_n_recyc:
+        #         count += agent.producer_costs
+        #     elif condition == "recycler_costs" and self.num_consumers <= \
+        #             agent.unique_id < self.num_consumers + \
+        #             self.num_recyclers:
+        #         count += agent.recycler_costs
+        #     elif condition == "refurbisher_costs" and self.num_consumers + \
+        #             self.num_prod_n_recyc <= agent.unique_id:
+        #         count += agent.refurbisher_costs
+        #     elif condition == "refurbisher_costs_w_margins" and self.num_consumers + \
+        #             self.num_prod_n_recyc <= agent.unique_id:
+        #         count += agent.refurbisher_costs_w_margins
+        
+        # if condition == "product_sold":
+        #     self.sold_repaired_waste += count2 - self.past_sold_repaired_waste
+        #     self.past_sold_repaired_waste = count2
         return count
 
     def step(self):
         """
         Advance the model by one step and collect data.
         """
+        self.count_statistics()
         self.agents_by_type[Manufacturer].shuffle_do('step')
         self.agents_by_type[SecondHandStore].shuffle_do('step')
         self.agents_by_type[Consumer].shuffle_do('step')
         self.agents_by_type[Recycler].shuffle_do('step')
 
-        # # Collect data
-        # self.datacollector.collect(self)
+        # Collect data
+        self.datacollector.collect(self)

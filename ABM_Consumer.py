@@ -17,7 +17,7 @@ def distribute_attitude_level(a, b, loc, scale):
     """
     distribution = truncnorm(a, b, loc, scale)
     attitude_level = float(distribution.rvs(1))
-    return attitude_level 
+    return attitude_level
 
 
 class Consumer(Agent):
@@ -63,9 +63,11 @@ class Consumer(Agent):
         self.to_purchase = True
         self.pathway_action = 'new'
         self.preference_id = preference_id
-        self.i_mu = 9
-        self.i_sigma = 0.6
-        self.income = np.random.lognormal(self.i_mu, self.i_sigma, 1)
+        # income part
+        self.i_mu = 8
+        self.i_sigma = 0.44
+        self.income = int(np.random.lognormal(
+            self.i_mu, self.i_sigma, 1))
 
         self.repair_cost = 0
         self.resell_cost = 0
@@ -136,19 +138,19 @@ class Consumer(Agent):
         self.refurbisher_id = model.num_consumers + model.num_prod_n_recyc + \
             random.randrange(model.num_sechdstores)
     
-    def update_income(self, growth_rate=0.05):
+    def update_income(self, growth_rate=0.1):
         """
         Update consumer's income annually with growth rate and Matthew effect.
 
         Args:
             growth_rate (float): Annual income growth rate, defaults to 0.05 (5%)
         """
-        if self.model.steps % 12 == 0 and self.model.steps != 0:
-            increments = np.random.lognormal(self.i_mu, self.i_sigma, 1)  # Income increments
-            # Matthew effect: allocate increments more likely to wealthier individuals
-            probabilities = self.income / np.sum(self.model.all_comsumer_income)  # Wealthier individuals get larger share
-            self.income += growth_rate * increments * probabilities
-            self.income = math.ceil(self.income)
+        
+        increments = np.random.lognormal(self.i_mu, self.i_sigma, 1)  # Income increments
+        # Matthew effect: allocate increments more likely to wealthier individuals
+        probabilities = self.income / sum(self.model.all_comsumer_income)  # Wealthier individuals get larger share
+        self.income += growth_rate * increments
+        self.income = int(self.income)
 
     def tpb_attitude(self, decision, att_level_env, weight_att):
         """
@@ -278,10 +280,10 @@ class Consumer(Agent):
             return max(valid_choices, key=lambda k: self.behavior_intention[k])
 
         # Print function
-        if decision == "eol_pathway":
-            print(f'Consumer {self.unique_id} decides to {self.pathway_action} the smartphone.')
-        else:
-            print(f'Consumer {self.unique_id} decides to purchase a {self.pathway_action} smartphone.')
+        # if decision == "eol_pathway":
+        #     print(f'Consumer {self.unique_id} decides to {self.pathway_action} the smartphone.')
+        # else:
+        #     print(f'Consumer {self.unique_id} decides to purchase a {self.pathway_action} smartphone.')
 
     def get_eol_cost_of_smartphone(self):
         """
@@ -383,7 +385,7 @@ class Consumer(Agent):
         for trader in manufacturers:
             if trader.unique_id == best_utility_id:
                 self.smartphone = trader.trade_with_consumer(self.unique_id)
-        print(f"Consumer {self.unique_id} purchased smartphone: {self.smartphone}")
+        # print(f"Consumer {self.unique_id} purchased smartphone: {self.smartphone}")
 
     def purchase_with_secondhand_store(self):
         """
@@ -441,7 +443,7 @@ class Consumer(Agent):
                 trader.trade_with_consumer_resell(smartphone_id=target_smartphone.unique_id)
                 target_smartphone.user_id = self.unique_id
                 self.smartphone = target_smartphone
-        print(f"Consumer {self.unique_id} purchased smartphone: {self.smartphone}")
+        # print(f"Consumer {self.unique_id} purchased smartphone: {self.smartphone}")
 
     def sell_smartphone_to_second_hand_store(self):
         """
@@ -533,8 +535,8 @@ class Consumer(Agent):
         """
         Main simulation step for the consumer.
         """
-        self.update_income() # update the income according to Matthew Effect 
-       
+        if self.model.steps % 12 == 0:
+            self.update_income() # update the income according to Matthew Effect
         # Step 1: Check if the consumer needs a new smartphone and update 'self.to_purchase'
         self.to_purchase = self.smartphone is None
 
