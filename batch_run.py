@@ -8,49 +8,49 @@ from ABM_Model import SmartphoneModel
 from ABM_Smartphone import Smartphone
 from ABM_Manufacturer import Manufacturer
 
+FIG_DPI = 500
 
-def plot_line(results_df):    
-    g = sns.lineplot(
-        data=results_df,
-        x="Step",
-        y="avg_consumer_income",
-    )
-    g.figure.set_size_inches(8, 4)
-    plot_title = "Average consumer income over time."
-    g.set(title=plot_title, ylabel="Income");
-    figure = g.get_figure()
-    figure.savefig('results/avg_consumer_income.png', dpi=400)
+def plot_consumer_income(results_df):    
+    plt.figure()
+    plt.plot(
+        results_df["Step"],
+        results_df["avg_consumer_income"],
+        label="buying new")
+    plt.title("Average Consumer Income Over Time")
+    plt.xlabel("Months")
+    plt.ylabel("Income")
+    plt.savefig('results/avg_consumer_income.png', dpi=FIG_DPI)
 
 
 def plot_pathway_action(results_df):
     plt.figure()
     plt.plot(
         results_df["Step"],
-        results_df["Agents buying new"],
+        results_df["consumer_buying new"],
         label="buying new")
     plt.plot(
         results_df["Step"],
-        results_df["Agents buying used"],
+        results_df["consumer_buying used"],
         label="buying used")
     plt.plot(
         results_df["Step"],
-        results_df["Agents repairing"],
+        results_df["consumer_repairing"],
         label="repairing")
     plt.plot(
         results_df["Step"],
-        results_df["Agents selling"],
+        results_df["consumer_selling"],
         label="selling")
     plt.plot(
         results_df["Step"],
-        results_df["Agents recycling"],
+        results_df["consumer_recycling"],
         label="recycling")
     plt.plot(
         results_df["Step"],
-        results_df["Agents landfilling"],
+        results_df["consumer_landfilling"],
         label="landfilling")
     plt.plot(
         results_df["Step"],
-        results_df["Agents storing"],
+        results_df["consumer_storing"],
         label="storing")
     
     plt.legend()
@@ -58,16 +58,33 @@ def plot_pathway_action(results_df):
     plt.xlabel("Step")
     plt.ylabel("Agent Count")
     plt.title("Consumer Actions")
-    plt.savefig('results/agents_actions.png')
+    plt.savefig('results/agents_actions.png', dpi=FIG_DPI)
+
+
+def plot_product(results_df):
+    plt.figure()
+    plt.plot(
+        results_df["Step"],
+        results_df["avg_new_product_price"],
+        label="new")
+    plt.plot(
+        results_df["Step"],
+        results_df["avg_used_product_price"],
+        label="used")
+    plt.title("Average Product Price Over Time")
+    plt.xlabel("Months")
+    plt.ylabel("Price")
+    plt.legend()
+    plt.savefig('results/avg_product_price.png', dpi=FIG_DPI)
+
 
 if __name__ == '__main__':
     csv_file = 'results/output_batch.csv'
-
     results = mesa.batch_run(
         SmartphoneModel,
         parameters={},
         iterations=1,
-        max_steps=60,
+        max_steps=120,
         number_processes=1,
         data_collection_period=1,
         display_progress=True,
@@ -75,5 +92,6 @@ if __name__ == '__main__':
     results_df = pd.DataFrame(results)
     results_df.to_csv(csv_file)
     print(results_df.keys())
-
+    plot_consumer_income(results_df)
     plot_pathway_action(results_df)
+    plot_product(results_df)

@@ -4,11 +4,6 @@ import numpy as np
 from mesa import Agent
 
 
-# Newly add:
-#   model.num_handled_phones
-#   model.initial_phones_handled
-
-
 class Smartphone(Agent):
     """Represents a smartphone in the agent-based model simulation."""
     def __init__(
@@ -19,10 +14,8 @@ class Smartphone(Agent):
             user_id=None,
             performance=1.0,
             time_held=0,
-            demand_used=0.3,
             product_price=5000,
-            initial_repair_cost=500.0,
-            decay_rate=0.1):
+            initial_repair_cost=500.0):
         """
         Initialize a Smartphone instance.
 
@@ -50,14 +43,13 @@ class Smartphone(Agent):
         self.resell_price = 0
         self.secondhand_market_price = 0
         self.sec_features2price = random.uniform(0.5, 0.8) # only valid if used
-        # Initial repair cost for second-hand store and recycler.
-        self.initial_repair_cost = initial_repair_cost
+        
+        self.initial_repair_cost = initial_repair_cost # initial repair cost for second-hand store and recycler.
 
-        # Rate at which the performance degrades (lambda in the exponential decay model)
-        self.decay_rate = decay_rate
-        self.demand_used = demand_used
-        self.material_value = 500 # material_value depends on the ingredients of product.
-        self.eol_probability = 0.05  # Probability that the phone reaches end-of-life per time step
+        self.decay_rate = 0.0005 # Rate at which the performance degrades (lambda in the exponential decay model)
+        self.noise_decay = 0.0005 # Gaussian noise for performance degradation
+        self.demand_used= 0.3 # demand of use for each smartphone
+        self.material_value = 500 # material_value depends on the ingredients of product
         self.resell_value = self.calculate_resell_price_sechnd()  # Value if resold in the second-hand market
         self.warranty_duration = 12 if self.is_new else 0  # New phones come with 12 months warranty
 
@@ -83,12 +75,11 @@ class Smartphone(Agent):
         decay_factor = math.exp(-self.decay_rate * self.time_held)
         self.performance = max(0, self.performance * decay_factor)
         # Add Gaussian noise to the performance
-        noise = random.gauss(0, 0.01)  # Mean of 0, standard deviation of 0.02
+        noise = random.gauss(0, self.noise_decay)  # Mean of 0, standard deviation of 0.02
         self.performance = max(0, min(1, self.performance + noise))  # Ensure performance stays between 0 and 1
         # Update the status if the phone reaches a critical performance level or by random chance
-        if random.random() < self.eol_probability or self.performance <= 0.05:
-            self.performance = 0  # Phone breaks down if end-of-life probability is reached or performance too low
-
+        return self.performance
+    
     def update_time_held(self):
         """Increment the time held by the user."""
         self.time_held += 1
@@ -185,6 +176,8 @@ class Smartphone(Agent):
             float: The price the second-hand store is willing to pay for the used smartphone.
         """
         # Normalized repair cost (repair cost relative to new phone price)
+        self.calculate_repair_cost()
+        # print(f'Smartphone repair {self.repair_cost}')
         normalized_repair_cost = self.repair_cost / self.purchase_price
         # Calculate the buying price considering performance, repair cost, and demand
         selling_price = self.purchase_price * self.performance + (1 + normalized_repair_cost)

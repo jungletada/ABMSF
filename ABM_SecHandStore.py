@@ -26,11 +26,6 @@ class SecondHandStore(Agent):
             on repairing costs at different scales from JRC 2019.
         scndhand_mkt_pric_rate (a list for a triangular distribution) (ratio),
             (default=[0.4, 1, 0.7]). From unpublished study Wang et al.
-        refurbisher_margin (ratio), (default=[0.03, 0.45, 0.24]). From Duvan
-            & Aykaç 2008 and www.investopedia.com (accessed 03/2020).
-        max_storage (a list for a triangular distribution) (years), (default=
-            [1, 8, 4]). From Wilson et al. 2017.
-
     """
 
     def __init__(self, model, unique_id, init_num_used_products=25):
@@ -63,11 +58,8 @@ class SecondHandStore(Agent):
                     user_id=None,
                     performance=random.uniform(0.7, 1),
                     time_held=random.randint(0, 24),
-                    demand_used=0.3,
                     product_price=product_price,
-                    initial_repair_cost=500,
-                    decay_rate=0.1
-                )
+                    initial_repair_cost=500,)
             )
 
     def buy_from_consumer(self, smartphone:Smartphone, consumer_id:int):
