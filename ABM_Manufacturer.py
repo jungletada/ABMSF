@@ -67,8 +67,9 @@ class Manufacturer(Agent):
         self.product_price = init_product_price
         self.features2price =  random.uniform(0.5, 0.8)
         self.profit_margin = random.uniform(0.1, 0.3)
-        self.demand_elasticity = random.uniform(0.02, 0.05)
+        self.demand_elasticity = random.uniform(0., 0.02)
         self.cost2price_ratio = random.uniform(0.20, 0.40)
+        self.price_update_month = random.randint(0, 11)
         self.financial_incentive = 0
         self.sigma_fi = 0.05
 
@@ -80,38 +81,15 @@ class Manufacturer(Agent):
         self.production_cost = 0
         self.cumulative_recycle_number = 0
 
-    def calculate_production_cost(self):
-        """
-        Calculates the total production cost of a smartphone by considering the use of both virgin and recycled materials. It also optimizes the percentage of recycled materials used to minimize the production cost while adhering to the maximum allowed production cost constraints.
-        
-        Returns:
-            float: The total production cost of a smartphone, taking into account the optimal use of recycled materials and adhering to cost constraints.
-        """
-        for material in self.material_weights:
-            # Calculate cost impact of increasing recycled content
-            recycled_part = self.recycled_material_price[material] \
-                * self.recycled_percentages[material] \
-                * self.material_weights[material]
-            virgin_part = self.virgin_material_price[material] \
-                * (1 - self.recycled_percentages[material]) \
-                * self.material_weights[material]
-            self.production_cost += recycled_part + virgin_part
-
-        # Calculate final values
-        recycled_weight = sum(self.recycled_percentages[material] *
-                            self.material_weights[material]
-                            for material in self.material_weights)
-
-        self.financial_incentive = self.sigma_fi * recycled_weight
-
-        return self.production_cost
-
-    def set_product_price(self, step):
+    def update_product_price(self):
         """
         Adjusts the price of the smartphone annually based on demand elasticity and production cost.
         
-        This method updates the product price every 12 steps (representing a year) by applying a price increase based on the demand elasticity, which simulates a 2-5% annual increase. Additionally, it incorporates a production cost adjustment to ensure profitability, considering the profit margin. The final price is rounded up to the nearest integer.
-        
+        This method updates the product price every 12 steps (representing a year) by applying a price 
+        increase based on the demand elasticity, which simulates a 2-5% annual increase. 
+        Additionally, it incorporates a production cost adjustment to ensure profitability, considering 
+        the profit margin. The final price is rounded up to the nearest integer.
+
         Args:
             step (int): The current step in the simulation, representing months.
             
@@ -119,14 +97,10 @@ class Manufacturer(Agent):
             float: The updated price of the smartphone.
         """
         # Only update price annually (every 12 steps)
-        if step % 12 == 0 and step != 0:
-            # Calculate price increase (2-5% annually)
-            # Update product price with increase
-            self.product_price *= (1 + self.demand_elasticity)
-            # Add production cost adjustment
-            cost_adjustment = self.production_cost * (1 + self.profit_margin)
-            self.product_price += cost_adjustment
+        if (self.model.steps + self.price_update_month) % 12 == 0:# Calculate price increase (2-5% annually)
+            self.product_price *= (1 + self.demand_elasticity) # Update product price with increase
             self.product_price = math.ceil(self.product_price) # integer price
+            # print(f'product_price: {self.product_price}')
 
     def trade_with_consumer(self, consumer_id):
         """
@@ -175,6 +149,8 @@ class Manufacturer(Agent):
         """
         Count the income of the producer.
         """
+        # Add production cost adjustment
+        self.production_cost = self.cost2price_ratio * self.product_price
         self.income = (self.product_price - self.production_cost) \
             * self.cumulative_sales
 
@@ -184,8 +160,7 @@ class Manufacturer(Agent):
         """
         Evolution of agent at each step
         """
-        self.set_product_price(self.model.steps)
-        self.calculate_production_cost()
+        self.update_product_price()
         self.count_income()
         # print(f'Producer: {self.unique_id}, {self.product_price}')
         # print(f"Manufacturer {self.unique_id}, production cost: {self.production_cost:.2f}")

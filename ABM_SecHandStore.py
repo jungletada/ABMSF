@@ -31,12 +31,13 @@ class SecondHandStore(Agent):
     def __init__(self, model, unique_id, init_num_used_products=25):
         super().__init__(model)
         self.unique_id = unique_id
+        self.init_num_used_products = init_num_used_products
         self.num_used_products = init_num_used_products
         self.inventory = []
         self.repair_cost = 0
         self.customers = []
         self.avg_product_price = 0
-        self.max_time_held = 36
+        self.max_time_held = 60
         self.num_sales = 0
         self.num_buy_from = 0
         self.initialize_inventory()
@@ -47,7 +48,33 @@ class SecondHandStore(Agent):
         Each smartphone is created with randomized performance and time held values.
         """
         producer_ids = list(self.model.new_product_id_price.keys())
-        for _ in range(self.num_used_products):
+        for _ in range(self.init_num_used_products):
+            choose_id = random.choice(producer_ids)
+            product_price = self.model.new_product_id_price[choose_id]
+            product = Smartphone(
+                    model=self.model,
+                    is_new=False,
+                    producer_id=choose_id,
+                    user_id=None,
+                    performance=random.uniform(0.7, 1),
+                    time_held=random.randint(1, 24),
+                    product_price=product_price,
+                    initial_repair_cost=500,)
+            self.inventory.append(product)
+
+    def replenish(self):
+        """
+        This function simulates the replenishment of used smartphones in the store's inventory on a yearly basis. 
+        It calculates the number of smartphones to be replenished based on the initial number of used products, 
+        randomly selects producer IDs from the model's available new product IDs, and creates new Smartphone instances 
+        with randomized performance and time held values. The new smartphones are then added to the store's inventory.
+        
+        The replenishment process is designed to mimic the periodic restocking of used smartphones in a real-world scenario, 
+        ensuring the store's inventory remains dynamic and reflects the natural flow of products in and out of the market.
+        """
+        num_replenished = int(random.uniform(0.1, 0.5) * self.init_num_used_products)
+        producer_ids = list(self.model.new_product_id_price.keys())
+        for _ in range(num_replenished):
             choose_id = random.choice(producer_ids)
             product_price = self.model.new_product_id_price[choose_id]
             self.inventory.append(
@@ -57,7 +84,7 @@ class SecondHandStore(Agent):
                     producer_id=choose_id,
                     user_id=None,
                     performance=random.uniform(0.7, 1),
-                    time_held=random.randint(0, 24),
+                    time_held=random.randint(1, 24),
                     product_price=product_price,
                     initial_repair_cost=500,)
             )
@@ -133,15 +160,18 @@ class SecondHandStore(Agent):
         - If time_held >= max_time_held, sends the phone to a randomly chosen recycler
           and removes it from inventory
         """
+        if self.model.steps % 12 == 0:
+            self.replenish()
+
         for smartphone in self.inventory:
-            smartphone.update_time_held()
+            smartphone.update_time_held(owner='sechandstore')
             if smartphone.time_held >= self.max_time_held:
                 # random pick a recycler
                 self.send_smartphone_to_recycler(smartphone)
                 self.inventory.remove(smartphone)
+
         # update the every year average product price
         if len(self.inventory) != 0:
-            product_price = [smartphone.secondhand_market_price
-                                for smartphone in self.inventory]
+            product_price = [smartphone.secondhand_market_price for smartphone in self.inventory]
             self.avg_product_price = np.mean(product_price)
-        # print(f"SecondHandStore {self.unique_id} doing.")
+        # print(f"SecondHandStore {self.unique_id} doing {self.avg_product_price}.")

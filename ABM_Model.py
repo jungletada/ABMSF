@@ -25,10 +25,10 @@ class SmartphoneModel(Model):
             consumers_node_degree=10,
             consumers_network_type="small-world",
             rewiring_prob=0.1,
-            num_consumers=100,
+            num_consumers=1000,
             num_recyclers=15,
             num_producers=8,
-            num_sechdstores=40,
+            num_sechdstores=20,
             prod_n_recyc_node_degree=5,
             prod_n_recyc_network_type="small-world",
             init_eol_rate={"repair": 0.005, "sell": 0.01, "recycle": 0.1, "landfill": 0.4425, "hoard": 0.4425},
@@ -42,9 +42,6 @@ class SmartphoneModel(Model):
             att_distrib_param_reuse=[0.223, 0.262],
             repairability=0.55,
         ):
-        """
-        Initiate model
-        """
         # Set up variables
         super().__init__(seed=seed)
         self.seed = seed
@@ -53,31 +50,36 @@ class SmartphoneModel(Model):
         np.random.seed(self.seed)
         random.seed(self.seed)
 
+        # Number of Agents
         self.num_consumers = num_consumers
-        self.consumers_node_degree = consumers_node_degree
-        self.consumers_network_type = consumers_network_type
-        
         self.num_recyclers = num_recyclers
         self.num_producers = num_producers
         self.num_prod_n_recyc = num_recyclers + num_producers
         self.num_sechdstores = num_sechdstores
         
+        # Network for consumers
+        self.consumers_node_degree = consumers_node_degree
+        self.consumers_network_type = consumers_network_type
         self.prod_n_recyc_node_degree = prod_n_recyc_node_degree
         self.prod_n_recyc_network_type = prod_n_recyc_network_type
-
+        
+        # Consumer
         self.init_eol_rate = init_eol_rate # dictionary with initial end-of-life (EOL) ratios
-        self.init_purchase_choice = init_purchase_rate # dictionary with initial purchase ratios
+        # self.init_purchase_choice = init_purchase_rate # dictionary with initial purchase ratios
         
-        self.init_product_prices = np.linspace(799, 7999, num_producers)
-        self.avg_new_product_price = int(sum(self.init_product_prices) / num_producers)
-        
-        self.clock = 0
-        self.iteration = 0
+        # Manufacturer
+        self.init_product_prices = np.linspace(999, 7999, num_producers)
+        self.avg_new_product_price = 0
+        self.avg_used_product_price = 0
+        # Second hand store
+        self.init_num_used_stocks_range = range(100, 150)
+        # System
         self.running = True
         self.color_map = []
         self.all_eol_pathways = all_eol_pathways
         
         self.all_comsumer_income = []
+        self.avg_comsumer_income = 0.
         self.repairability = repairability
         
         self.total_waste = 0
@@ -161,22 +163,24 @@ class SmartphoneModel(Model):
                 sechdstore = SecondHandStore(
                     model=self,
                     unique_id=node,
-                    init_num_used_products=200,
+                    init_num_used_products=random.choice(self.init_num_used_stocks_range),
                     )
                 self.grid.place_agent(sechdstore, node)
 
         # Defines reporters and setup data collector
         model_reporters = {
-            "avg_consumer_income": lambda c: self.report_output("income"),
+            "avg_consumer_income": lambda c:self.avg_comsumer_income,
             "consumer_repairing": lambda c: self.count_products_pathway("repairing"),
             "consumer_selling": lambda c: self.count_products_pathway("selling"),
             "consumer_recycling": lambda c: self.count_products_pathway("recycling"),
             "consumer_landfilling": lambda c: self.count_products_pathway("landfilling"),
             "consumer_storing": lambda c: self.count_products_pathway("hoarding"),
-            "consumer_buying new": lambda c: self.count_products_pathway("buy_new"),
-            "consumer_buying used": lambda c: self.count_products_pathway("buy_used"),
+            "consumer_buying_new": lambda c: self.count_products_pathway("buy_new"),
+            "consumer_buying_used": lambda c: self.count_products_pathway("buy_used"),
             "avg_new_product_price": lambda c: self.avg_new_product_price,
-            "avg_used_product_price": lambda c: self.count_used_product_price(),
+            "avg_used_product_price": lambda c: self.avg_used_product_price,
+            'new_price_to_income': lambda c: self.report_output('new_price_to_income'),
+            'used_price_to_income':lambda c: self.report_output('used_price_to_income'),
             # "Total product": lambda c:self.report_output("product_stock"),
             # "New product": lambda c:self.report_output("product_stock_new"),
             # "Used product": lambda c:self.report_output("product_stock_used"),
@@ -299,26 +303,33 @@ class SmartphoneModel(Model):
         (to get original recycling/repairing amounts).
         """
         correction_year = len(self.total_number_product) - 1
-        return [j * (1 - math.e ** (-(((self.clock + (correction_year - z)) /
+        return [j * (1 - math.e ** (-(((self.step + (correction_year - z)) /
                                avg_lifetime[z]) ** failure_rate))).real
                 for (z, j) in enumerate(num_product)]
 
-
-    def count_used_product_price(self):
+    def count_average_product_price(self):
+        # used products
+        num_stocks = 0
+        total_used_price = 0
         for agent in self.agents:
             if isinstance(agent, SecondHandStore):
-                num_stocks = 0
-                total_used_prices = 0
                 if len(agent.inventory) != 0:
                     for smartphone in agent.inventory:
-                        used_price = smartphone.calculate_sechnd_market_price()
                         num_stocks += 1
-                        total_used_prices += used_price
+                        total_used_price += smartphone.calculate_sechnd_market_price()
         if num_stocks != 0:
-            avg_used_product_price = int(total_used_prices / num_stocks)
+            avg_used_product_price = int(total_used_price / num_stocks)
         else:
             avg_used_product_price = None
-        return avg_used_product_price 
+        self.avg_used_product_price = avg_used_product_price
+
+        # new products
+        total_new_price = 0
+        for agent in self.agents:
+            if isinstance(agent, Manufacturer):
+                total_new_price += agent.product_price
+        avg_new_product_price = total_new_price / self.num_producers
+        self.avg_new_product_price = avg_new_product_price
 
     def count_products_pathway(self, condition):
         """
@@ -346,8 +357,17 @@ class SmartphoneModel(Model):
                     continue
         return count
 
-    def count_statistics(self):
+    def update_statistics(self):
+        """
+        Update model statistics including consumer incomes and manufacturer prices.
+        Collects current income data from consumers and updates product prices from manufacturers.
+        """
         self.all_comsumer_income = [agent.income for agent in self.agents_by_type[Consumer]]
+        self.avg_comsumer_income = float(np.mean(self.all_comsumer_income))
+        self.count_average_product_price()
+        manufacturers = list(self.agents_by_type[Manufacturer])
+        for m in manufacturers:
+            self.new_product_id_price[m.unique_id] = m.product_price
 
     def report_output(self, condition):
         """
@@ -360,6 +380,11 @@ class SmartphoneModel(Model):
         industrial_waste_recycled = 0
         industrial_waste_landfill_mass = 0
         industrial_waste_recycled_mass = 0
+
+        if condition == 'new_price_to_income':
+            count = self.avg_new_product_price / self.avg_comsumer_income
+        elif condition == 'used_price_to_income':
+            count = self.avg_used_product_price / self.avg_comsumer_income
         # for agent in self.agents:
         #     if self.num_consumers + self.num_recyclers <= agent.unique_id < \
         #             self.num_consumers + self.num_prod_n_recyc:
@@ -375,11 +400,6 @@ class SmartphoneModel(Model):
         #             industrial_waste_landfill_mass += \
         #                 self.yearly_product_wght * \
         #                 agent.industrial_waste_generated / self.num_consumers
-        
-        for agent in self.agents:
-            if condition == "income" and isinstance(agent, Consumer):
-                count = np.mean(self.all_comsumer_income)
-            
         #     elif condition == "product_stock" and agent.unique_id < \
         #             self.num_consumers:
         #         count += sum(agent.number_product_hard_copy)
@@ -501,10 +521,10 @@ class SmartphoneModel(Model):
         """
         Advance the model by one step and collect data.
         """
-        self.count_statistics()
+        self.update_statistics()
         self.agents_by_type[Manufacturer].shuffle_do('step')
         self.agents_by_type[SecondHandStore].shuffle_do('step')
         self.agents_by_type[Consumer].shuffle_do('step')
         self.agents_by_type[Recycler].shuffle_do('step')
-        # Collect data
+        
         self.datacollector.collect(self)
