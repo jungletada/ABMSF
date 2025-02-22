@@ -65,8 +65,7 @@ class Consumer(Agent):
         # income part
         self.i_mu = 8
         self.i_sigma = 0.44
-        self.income = int(np.random.lognormal(
-            self.i_mu, self.i_sigma, 1))
+        self.income = int(np.random.lognormal(self.i_mu, self.i_sigma, 1))
 
         self.repair_cost = 0
         self.repair_min_perf = 0.35
@@ -74,9 +73,9 @@ class Consumer(Agent):
         self.repair_max_times = 6
 
         self.resell_cost = 0
-        self.landfill_cost = 10
+        self.landfill_cost = float(np.random.normal(0., 0.05))
 
-        self.hoard_cost = 10
+        self.hoard_cost = float(np.random.normal(0., 0.05))
         self.hoard_min_perf = 0.3
         self.recycle_cost = 0
 
@@ -104,11 +103,11 @@ class Consumer(Agent):
                                self.eol_choices[3]: 0.25,
                                self.eol_choices[4]: 0.25}
         # Need to update
-        self.pbc_costs_eol =  {self.eol_choices[0]: 0.005,
-                               self.eol_choices[1]: 0.01,
+        self.pbc_costs_eol =  {self.eol_choices[0]: 0.1,
+                               self.eol_choices[1]: 0.1,
                                self.eol_choices[2]: 0.1,
-                               self.eol_choices[3]: 0.4425,
-                               self.eol_choices[4]: 0.4425}
+                               self.eol_choices[3]: 0.1,
+                               self.eol_choices[4]: 0.1}
 
         # column sum up to 1
         self.purchase_choices = ["used", "new"]
@@ -117,9 +116,9 @@ class Consumer(Agent):
         self.weight_pbc_purchase = {self.purchase_choices[0]: 0.45, self.purchase_choices[1]: 0.45}
 
         # Need to update
-        self.pbc_costs_purchase =  {self.purchase_choices[0]: 0.00, self.purchase_choices[1]: 0.00}
-        self.att_level_buy_used = float(np.random.normal(0.2, 0.05))
-        self.att_level_recycle = float(np.random.normal(0.4, 0.05))
+        self.pbc_costs_purchase =  {self.purchase_choices[0]: 0., self.purchase_choices[1]: 0.}
+        self.att_level_buy_used = float(np.random.normal(0.3, 0.05))
+        self.att_level_recycle = float(np.random.normal(0.3, 0.05))
         self.behavior_intention = {}
 
         # Recycle PBC intention
@@ -316,9 +315,9 @@ class Consumer(Agent):
             self.behavior_intention[choice] = \
                 pbc_values[choice] + sn_values[choice] + att_values[choice]
             #######################################################################
-            # if decision == "eol_pathway":
-            #     print(f'Consumer {self.unique_id}, {choice}, score={self.behavior_intention[choice]:.2f}, ' 
-            #       f'[{pbc_values[choice]:.2f}, {sn_values[choice]:.2f}, {att_values[choice]:.2f}]')
+            if decision == "eol_pathway":
+                print(f'Consumer {self.unique_id}, {choice}, sum={self.behavior_intention[choice]:.2f}, ' 
+                  f'[pbc={pbc_values[choice]:.2f}, sn={sn_values[choice]:.2f}, att={att_values[choice]:.2f}]')
         
         self.pathway_action = max(self.behavior_intention, key=self.behavior_intention.get)
         
@@ -354,7 +353,7 @@ class Consumer(Agent):
         """
         # repair cost need to be paid by consumer
         self.repair_cost = self.smartphone.calculate_repair_cost()
-        # reresell cost is paid by second-hand store
+        # resell cost is paid by second-hand store
         self.resell_cost = -self.smartphone.calculate_resell_price_sechnd()
         # recycle cost is paid by second-hand store
         self.recycle_cost = -self.smartphone.calculate_recycle_price()
@@ -364,6 +363,7 @@ class Consumer(Agent):
             "recycle": self.recycle_cost / self.income, 
             "landfill": self.landfill_cost, 
             "hoard": self.hoard_cost}
+        # print(f'{self.unique_id}, {self.pbc_costs_eol}')
 
     def use_smartphone(self):
         """
@@ -392,15 +392,6 @@ class Consumer(Agent):
             else:
                 print(f"pathway_choice={self.pathway_action} is not available.")
                 raise NotImplementedError
-
-    def dispose_smartphone_in_landfill(self):
-        """
-        Disposing the current smartphone in a landfill.
-        """
-        if self.smartphone is not None:
-            self.smartphone.remove()
-        self.smartphone = None
-        # print(f"Consumer {self.consumer_id} landfilled their smartphone.")
 
     def repair_smartphone(self):
         """
@@ -475,7 +466,7 @@ class Consumer(Agent):
         # Calculate min and max
         values = list(income2price.values())
         min_value = min(values)
-        max_value = min(max(values), 1)
+        max_value = max(values)
         # Apply min-max normalization formula
         n_income2price = {
             key: (value - min_value) / (max_value - min_value)
@@ -590,20 +581,28 @@ class Consumer(Agent):
             processor.recycle_from_customer(self.smartphone, self.unique_id)
             self.smartphone = None
     
+    def landfill_smartphone(self):
+        """
+        Disposing the current smartphone in a landfill.
+        """
+        if self.smartphone is not None:
+            self.smartphone.remove()
+        self.smartphone = None
+        # print(f"Consumer {self.consumer_id} landfilled their smartphone.")
+
     def step(self):
         """
         Main simulation step for the consumer.
         """
-        self.update_purchase_cost()
         if self.model.steps % 12 == 0:
             self.update_income() # update the income according to Matthew Effect
         
         # Check if the consumer needs a smartphone and update 'self.to_purchase'
         self.to_purchase = self.smartphone is None
-
         if self.to_purchase:
             # Decide whether to purchase new or used smartphone
             # update 'self.pathway_choice'
+            self.update_purchase_cost()
             self.tpb_decision(
                 decision='purchase_choice',
                 weight_att=self.weight_att_purchase,
@@ -623,10 +622,8 @@ class Consumer(Agent):
 
         else:
             # Use the smartphone and check EoL decision
-            # update 'self.pathway_choice'
-            self.use_smartphone()
             self.update_eol_cost()
-
+            self.use_smartphone()
             self.tpb_decision(
                 decision='eol_pathway',
                 weight_att=self.weight_att_eol,

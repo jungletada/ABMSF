@@ -9,7 +9,7 @@ class Smartphone(Agent):
     def __init__(
             self,
             model,
-            is_new,
+            is_new=True,
             producer_id=None,
             user_id=None,
             performance=1.0,
@@ -53,9 +53,9 @@ class Smartphone(Agent):
         self.demand_used = random.uniform(-0.2, 0.2) # demand of use for each smartphone
         self.discount_rate = random.uniform(0.9, 1.0) # demand of use for each smartphone
         self.material_value = 500 # material_value depends on the ingredients of product
+        self.warranty_duration = 6 if self.is_new else 0  # New phones come with 6 months warranty
         self.resell_value = self.calculate_resell_price_sechnd()  # Value if resold in the second-hand market
-        self.warranty_duration = 6 if self.is_new else 0  # New phones come with 12 months warranty
-
+        
         # Recycle Service
         self.perf_rec = 0.1
         self.time_rec = 0.2
@@ -91,7 +91,7 @@ class Smartphone(Agent):
             self.degrade_performance(decay_rate=self.decay_rate, noise_decay=self.noise_decay)
         else:
             self.degrade_performance(decay_rate=0.5 * self.decay_rate, noise_decay=self.noise_decay)
-        # update cost price for eol
+        # # update cost price for eol
         self.calculate_repair_cost()
         self.calculate_recycle_price()
         self.calculate_resell_price_sechnd()
@@ -106,7 +106,7 @@ class Smartphone(Agent):
         store_initial_cost (float): Initial repair cost for second-hand store or recycler.
         store_handled_phones (int): current number of phones handled by the store or recycler.
         """
-        if self.time_held < self.warranty_duration:  # Phone is under warranty
+        if self.time_held <= self.warranty_duration:  # Phone is under warranty
             self.repair_cost = 0  # Free repair under warranty (or set to a very low cost)
             # print(f"Phone is under warranty. Repair cost: {self.repair_cost}")
         
@@ -147,11 +147,13 @@ class Smartphone(Agent):
             float: The price the second-hand store is willing to pay for the used smartphone.
         """
         # Normalized repair cost (repair cost relative to new phone price)
+        self.calculate_repair_cost()
         normalized_repair_cost = self.repair_cost / self.purchase_price
-        # Calculate the buying price considering performance, repair cost, and demand
-        buying_price = (self.purchase_price * self.performance) * (1 - normalized_repair_cost)
-        # Adjust the buying price based on the demand for used phones
-        self.resell_price = buying_price * (1 + self.demand_used)
+        # Calculate the buying price considering performance, repair cost, and demand for used phones
+        buying_price = self.purchase_price * self.performance * \
+            (1 - normalized_repair_cost) * (1 + self.demand_used) * self.discount_rate
+        self.secondhand_market_price = int(min(0.8 * self.purchase_price, buying_price))
+        self.resell_price = buying_price
         return self.resell_price
 
     def calculate_sechnd_market_price(self):
