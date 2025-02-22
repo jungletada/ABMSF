@@ -1,4 +1,4 @@
-2025-02-20 23:22:29,241 - batch_run.py - INFO: Index(['RunId', 'iteration', 'Step', 'avg_consumer_income',
+2025-02-22 13:51:05,765 - batch_run.py - INFO: Index(['RunId', 'iteration', 'Step', 'avg_consumer_income',
        'consumer_repairing', 'consumer_selling', 'consumer_recycling',
        'consumer_landfilling', 'consumer_storing', 'consumer_buying_new',
        'consumer_buying_used', 'avg_new_product_price',

@@ -39,10 +39,12 @@ class Smartphone(Agent):
         self.user_id = user_id          # ID of the current user holding this phone
 
         self.purchase_price = product_price  # Purchase price from the new market
-        self.repair_cost = 0    # Repair cost if the phone is broken
-        self.resell_price = 0
-        self.secondhand_market_price = 0
-        self.sec_features2price = random.uniform(0.5, 0.8) # only valid if used
+        self.repair_cost = 0    # repair cost if the phone is broken
+        self.repair_times = 0   # repair times
+       
+        self.secondhand_market_price = 0 # second-hand market price for selling to consumer
+        self.resell_price = 0   # resell price to second-hand market
+        self.sec_features2price = random.uniform(0.5, 0.8) # only valid if is_used
         
         self.initial_repair_cost = initial_repair_cost # initial repair cost for second-hand store and recycler.
 
@@ -115,9 +117,23 @@ class Smartphone(Agent):
 
     def repair_product(self):
         """
-        Attempt to repair the phone with a random chance of success.
+        Attempt to repair the phone, with repair effectiveness influenced by time held and repair times.
+        The more time held and repairs done, the less effective each repair becomes.
         """
-        self.performance = min(0.95, self.performance + 0.3)  # Performance improves after repair
+        # Calculate repair effectiveness: The older the phone and the more repairs done, 
+        # the less effective the repair is
+        repair_effectiveness = max(0.1, 1 - (self.repair_times * 0.05) - (self.time_held * 0.001))
+        # Random factor to simulate repair success (between 0 and 1)
+        repair_success = random.random()
+        # Repair success is influenced by repair effectiveness
+        if repair_success < repair_effectiveness:
+            # Each repair increases performance by a factor, but it's limited by the maximum performance
+            performance_increase = 0.2 * (1 - self.performance)  # The closer to 1, the smaller the increase
+            self.performance = min(1.0, self.performance + performance_increase)
+            # Increment the repair count
+            self.repair_times += 1
+        # Log the repair attempt
+        # print(f"Repair attempt {self.repair_times}: Performance is now {self.performance:.2f}")
 
     def calculate_resell_price_sechnd(self):
         """
