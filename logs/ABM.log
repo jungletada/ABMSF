@@ -1,9 +1,9 @@
-2025-03-01 18:28:44,776 - batch_run.py - INFO: Index(['RunId', 'iteration', 'Step', 'avg_consumer_income',
+2025-03-01 23:53:12,376 - batch_run.py - INFO: Index(['RunId', 'iteration', 'Step', 'avg_consumer_income',
        'consumer_repairing', 'consumer_selling', 'consumer_recycling',
        'consumer_landfilling', 'consumer_storing', 'consumer_buying_new',
        'consumer_buying_used', 'avg_new_product_price',
        'avg_used_product_price', 'new_price_to_income',
        'used_price_to_income'],
       dtype='object')
-2025-03-01 18:28:46,854 - batch_run.py - INFO: Consumers buying action=[94.67868852  5.32131148]
-2025-03-01 18:28:46,854 - batch_run.py - INFO: Consumers EoL actions=[  0. 100.   0.   0.   0.]
+2025-03-01 23:53:14,082 - batch_run.py - INFO: Consumers buying action=[78.03243464 21.96756536]
+2025-03-01 23:53:14,083 - batch_run.py - INFO: Consumers EoL actions=[ 0.          0.54452665 26.07745464 19.93626841 53.4417503 ]

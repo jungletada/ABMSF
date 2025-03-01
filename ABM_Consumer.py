@@ -87,34 +87,34 @@ class Consumer(Agent):
         # column sum up to 1
         self.eol_choices = ["repair", "resell", "recycle", "landfill", "hoard"]
         self.weight_att_eol = {"repair": 0.45,
-                               "resell": 0.35,
-                               self.eol_choices[2]: 0.55,
-                               self.eol_choices[3]: 0.45,
-                               self.eol_choices[4]: 0.55}
+                               "resell": 0.45,
+                               "recycle": 0.55,
+                               "landfill": 0.45,
+                               "hoard": 0.55}
         
         self.weight_sn_eol =  {"repair": 0.1,
-                               "resell": 0.1,
-                               self.eol_choices[2]: 0.1,
-                               self.eol_choices[3]: 0.1,
-                               self.eol_choices[4]: 0.1}
+                               "resell": 0.40,
+                               "recycle": 0.1,
+                               "landfill": 0.1,
+                               "hoard": 0.1}
         
         self.weight_pbc_eol = {"repair": 0.45,
-                               "resell": 0.55,
-                               self.eol_choices[2]: 0.35,
-                               self.eol_choices[3]: 0.55,
-                               self.eol_choices[4]: 0.45}
+                               "resell": 0.15,
+                               "recycle": 0.35,
+                               "landfill": 0.55,
+                               "hoard": 0.45}
         # Need to update
         self.pbc_costs_eol =  {"repair": 0.1,
                                "resell": 0.1,
-                               self.eol_choices[2]: 0.1,
-                               self.eol_choices[3]: 0.1,
-                               self.eol_choices[4]: 0.1}
+                               "recycle": 0.1,
+                               "landfill": 0.1,
+                               "hoard": 0.1}
 
         # column sum up to 1
         self.purchase_choices = ["used", "new"]
-        self.weight_att_purchase = {"used": 0.38, "new": 0.58}
+        self.weight_att_purchase = {"used": 0.38, "new": 0.53}
         self.weight_sn_purchase =  {"used": 0.10, "new": 0.10}
-        self.weight_pbc_purchase = {"used": 0.52, "new": 0.32}
+        self.weight_pbc_purchase = {"used": 0.52, "new": 0.37}
 
         # Need to update
         self.pbc_costs_purchase =  {"used": 0., "new": 0.}
@@ -314,9 +314,9 @@ class Consumer(Agent):
             self.behavior_intention[choice] = \
                 pbc_values[choice] + sn_values[choice] + att_values[choice]
             #######################################################################
-            # if decision != "eol_pathway":
-            #     print(f'Consumer {self.unique_id}, {choice}, sum={self.behavior_intention[choice]:.2f}, ' 
-            #       f'[pbc={pbc_values[choice]:.2f}, sn={sn_values[choice]:.2f}, att={att_values[choice]:.2f}]')
+            if decision == "eol_pathway":
+                print(f'Consumer {self.unique_id}, {choice}, sum={self.behavior_intention[choice]:.2f}, ' 
+                  f'[pbc={pbc_values[choice]:.2f}, sn={sn_values[choice]:.2f}, att={att_values[choice]:.2f}]')
         
         self.pathway_action = max(self.behavior_intention, key=self.behavior_intention.get)
         
@@ -359,8 +359,8 @@ class Consumer(Agent):
         self.recycle_cost = -self.smartphone.calculate_recycle_price()
         self.pbc_costs_eol = {
             "repair": self.repair_cost / self.income, 
-            "resell": self.resell_cost / self.income, 
-            "recycle": self.recycle_cost / self.income, 
+            "resell": self.resell_cost / self.income / 5, 
+            "recycle": self.recycle_cost / self.income / 5, 
             "landfill": self.landfill_cost, 
             "hoard": self.hoard_cost}
         # print(f'{self.unique_id}, {self.pbc_costs_eol}')
