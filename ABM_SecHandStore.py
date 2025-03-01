@@ -40,6 +40,7 @@ class SecondHandStore(Agent):
         self.max_time_held = 60
         self.num_sales = 0
         self.num_buy_from = 0
+        self.replenish_interval = random.randint(0, 11)
         self.initialize_inventory()
 
     def initialize_inventory(self):
@@ -48,15 +49,15 @@ class SecondHandStore(Agent):
         Each smartphone is created with randomized performance and time held values.
         """
         producer_ids = list(self.model.new_product_id_price.keys())
-        for _ in range(self.init_num_used_products):
-            choose_id = random.choice(producer_ids)
+        choose_ids = random.choices(producer_ids, k=self.init_num_used_products)
+        for choose_id in choose_ids:
             product_price = self.model.new_product_id_price[choose_id]
             product = Smartphone(
                     model=self.model,
                     is_new=False,
                     producer_id=choose_id,
                     user_id=None,
-                    performance=random.uniform(0.7, 1),
+                    performance=random.uniform(0.7, 1.0),
                     time_held=random.randint(1, 24),
                     product_price=product_price,
                     initial_repair_cost=500,)
@@ -74,20 +75,22 @@ class SecondHandStore(Agent):
         """
         num_replenished = int(random.uniform(0.1, 0.5) * self.init_num_used_products)
         producer_ids = list(self.model.new_product_id_price.keys())
-        for _ in range(num_replenished):
-            choose_id = random.choice(producer_ids)
+        choose_ids = random.choices(producer_ids, k=num_replenished)
+        
+        for choose_id in choose_ids:
             product_price = self.model.new_product_id_price[choose_id]
-            self.inventory.append(
-                Smartphone(
+            # if self.unique_id == 1026:
+            #     print(f'time {self.model.steps}, {choose_id}, {product_price}')
+            product = Smartphone(
                     model=self.model,
                     is_new=False,
                     producer_id=choose_id,
                     user_id=None,
-                    performance=random.uniform(0.7, 1),
+                    performance=random.uniform(0.7, 0.9),
                     time_held=random.randint(1, 24),
                     product_price=product_price,
                     initial_repair_cost=500,)
-            )
+            self.inventory.append(product)
 
     def buy_from_consumer(self, smartphone:Smartphone, consumer_id:int):
         """
@@ -100,12 +103,12 @@ class SecondHandStore(Agent):
         the smartphone's user_id, and adds it to the store's inventory. The repair is done
         automatically before adding to inventory to ensure all store stock is in good condition.
         """
-        smartphone.repair_product() # repair the used smartphone for reselling
-        self.repair_cost += smartphone.calculate_repair_cost() # update the repairing cost
-        smartphone.user_id = self.unique_id # change the owner
-        smartphone.is_new = False
-        smartphone.calculate_sechnd_market_price() # decide the used product price
-        self.inventory.append(smartphone) # add to the inventory
+        # smartphone.repair_product() # repair the used smartphone for reselling
+        # self.repair_cost += smartphone.calculate_repair_cost() # update the repairing cost
+        # smartphone.user_id = self.unique_id # change the owner
+        # smartphone.is_new = False
+        # smartphone.calculate_sechnd_market_price() # decide the used product price
+        # self.inventory.append(smartphone) # add to the inventory
         self.customers.append(consumer_id)
         self.num_buy_from += 1
         # print(f'Second Market Trade: before {consumer_id}, after { smartphone.user_id}')
@@ -125,9 +128,9 @@ class SecondHandStore(Agent):
         inventory is empty, returns None to indicate no smartphone is available for sale.
         """
         self.num_sales += 1
-        for product in self.inventory:
-            if product.unique_id == smartphone_id:
-                self.inventory.remove(product)
+        # for product in self.inventory:
+        #     if product.unique_id == smartphone_id:
+        #         self.inventory.remove(product)
 
     def send_smartphone_to_recycler(self, smartphone:Smartphone):
         """
@@ -160,12 +163,16 @@ class SecondHandStore(Agent):
         - If time_held >= max_time_held, sends the phone to a randomly chosen recycler
           and removes it from inventory
         """
-        if self.model.steps % 12 == 0:
+        if (self.model.steps + self.replenish_interval) % 12 == 0:
             self.replenish()
 
+        # print(f't={self.model.steps}, id={self.unique_id}, stocks={len(self.inventory)}, buy={self.num_buy_from}')
         for smartphone in self.inventory:
             smartphone.update_time_held(owner='sechandstore')
-            if smartphone.time_held >= self.max_time_held:
+            # if self.unique_id == 1026:
+            #     print(f'{self.model.steps}, {self.unique_id} doing update ' 
+            #         f'{smartphone.producer_id}: {smartphone.purchase_price},{smartphone.secondhand_market_price}')
+            if smartphone.performance <= 0.4:
                 # random pick a recycler
                 self.send_smartphone_to_recycler(smartphone)
                 self.inventory.remove(smartphone)

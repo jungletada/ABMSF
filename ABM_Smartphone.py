@@ -50,8 +50,8 @@ class Smartphone(Agent):
 
         self.decay_rate = 0.0005 # Rate at which the performance degrades (lambda in the exponential decay model)
         self.noise_decay = 0.0005 # Gaussian noise for performance degradation
-        self.demand_used = random.uniform(-0.2, 0.2) # demand of use for each smartphone
-        self.discount_rate = random.uniform(0.9, 1.0) # demand of use for each smartphone
+        self.demand_used = random.uniform(0, 0.2) # demand of use for each smartphone
+        self.discount_rate = random.uniform(0.9, 1) # demand of use for each smartphone
         self.material_value = 500 # material_value depends on the ingredients of product
         self.warranty_duration = 6 if self.is_new else 0  # New phones come with 6 months warranty
         self.resell_value = self.calculate_resell_price_sechnd()  # Value if resold in the second-hand market
@@ -90,8 +90,8 @@ class Smartphone(Agent):
         if owner == 'consumer':
             self.degrade_performance(decay_rate=self.decay_rate, noise_decay=self.noise_decay)
         else:
-            self.degrade_performance(decay_rate=0.5 * self.decay_rate, noise_decay=self.noise_decay)
-        # # update cost price for eol
+            self.degrade_performance(decay_rate=self.decay_rate/4, noise_decay=self.noise_decay)
+        # update cost price for eol
         self.calculate_repair_cost()
         self.calculate_recycle_price()
         self.calculate_resell_price_sechnd()
@@ -174,9 +174,9 @@ class Smartphone(Agent):
         normalized_repair_cost = self.repair_cost / self.purchase_price
         # Calculate the buying price considering performance, repair cost, and demand for used phones
         selling_price = self.purchase_price * self.performance * \
-            (1 + normalized_repair_cost) * (1 + self.demand_used) * self.discount_rate
-        self.secondhand_market_price = int(min(0.9 * self.purchase_price, selling_price))
-        # print(f'new {self.purchase_price}, used {self.secondhand_market_price}')
+            (1 + normalized_repair_cost) * (1 + self.demand_used)
+        self.secondhand_market_price = int(min(0.98 * self.purchase_price, selling_price))
+        # print(f'{self.model.steps},new {self.purchase_price}, used {self.secondhand_market_price}')
         return self.secondhand_market_price
     
     def calculate_trade_in_value(self):

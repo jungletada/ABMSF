@@ -14,25 +14,29 @@ def plot_consumer_income(results_df):
     plt.title("Average Consumer Income Over Time")
     plt.xlabel("Months")
     plt.ylabel("Income")
+    plt.xlim((1, 121))
     plt.savefig(os.path.join(SAVE_DIR, 'avg_consumer_income.png'), dpi=FIG_DPI)
 
 
 def plot_buying_action(results_df):
-    plt.figure()
-    plt.plot(
+    plt.figure(plt.figure(figsize=(20, 6)))
+    f, (ax1, ax2) = plt.subplots(1, 2, sharex=True, sharey=True)
+    ax1.plot(
         results_df["Step"],
-        results_df["consumer_buying_new"],
-        label="buying new")
-    plt.plot(
-        results_df["Step"],
-        results_df["consumer_buying_used"],
-        label="buying used")
+        results_df["consumer_buying_new"])
+    ax1.set_title("Consumer Buying New")
     
-    plt.legend()
+    ax2.plot(
+        results_df["Step"],
+        results_df["consumer_buying_used"])
+    ax2.set_title("Consumer Buying Used")
 
-    plt.xlabel("Step")
-    plt.ylabel("Agent Count")
-    plt.title("Consumer Actions")
+    # Set x-axis limits and ticks
+    ax1.set_xlim(0, 120)  # Set x-axis range
+    ax2.set_xlim(0, 120)
+    
+    ax1.set_xticks(range(0, 121, 20))  # Set x-axis ticks at intervals of 20
+    ax2.set_xticks(range(0, 121, 20))
     plt.savefig(os.path.join(SAVE_DIR, 'agents_buying_actions.png'), dpi=FIG_DPI)
 
 
@@ -60,7 +64,7 @@ def plot_eol_action(results_df):
         label="storing")
     
     plt.legend()
-
+    plt.xlim((1, 120))
     plt.xlabel("Step")
     plt.ylabel("Agent Count")
     plt.title("Consumer Actions")

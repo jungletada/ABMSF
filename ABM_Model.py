@@ -16,7 +16,7 @@ from ABM_SecHandStore import SecondHandStore
 from ABM_Manufacturer import Manufacturer
 
 
-class SmartphoneModel(Model):
+class AgentBasedModel(Model):
     def __init__(
             self,
             seed=None,
@@ -65,14 +65,14 @@ class SmartphoneModel(Model):
         
         # Consumer
         self.init_eol_rate = init_eol_rate # dictionary with initial end-of-life (EOL) ratios
-        # self.init_purchase_choice = init_purchase_rate # dictionary with initial purchase ratios
+        self.init_purchase_choice = init_purchase_rate # dictionary with initial purchase ratios
         
         # Manufacturer
-        self.init_product_prices = np.linspace(999, 7999, num_producers)
+        self.init_product_prices = np.linspace(1999, 6999, num_producers)
         self.avg_new_product_price = 0
         self.avg_used_product_price = 0
         # Second hand store
-        self.init_num_used_stocks_range = range(100, 150)
+        self.init_num_used_stocks_range = range(20, 50)
         # System
         self.running = True
         self.color_map = []
@@ -151,13 +151,14 @@ class SmartphoneModel(Model):
             elif node < self.num_prod_n_recyc + self.num_consumers:
                 #===================== Producers =====================#
                 producer_index = node - self.num_recyclers - self.num_consumers
+                product_id_price = int(self.init_product_prices[producer_index])
                 manufacturer = Manufacturer(
                     model=self,
                     unique_id=node,
-                    init_product_price=int(self.init_product_prices[producer_index])
+                    init_product_price=product_id_price
                     )
                 self.grid.place_agent(manufacturer, node)
-                self.new_product_id_price[node] = manufacturer.product_price
+                self.new_product_id_price[node] = product_id_price
             else:
                 #================== Second-hand Store ==================#
                 sechdstore = SecondHandStore(
@@ -170,13 +171,13 @@ class SmartphoneModel(Model):
         # Defines reporters and setup data collector
         model_reporters = {
             "avg_consumer_income": lambda c:self.avg_comsumer_income,
-            "consumer_repairing": lambda c: self.count_products_pathway("repairing"),
-            "consumer_selling": lambda c: self.count_products_pathway("selling"),
-            "consumer_recycling": lambda c: self.count_products_pathway("recycling"),
-            "consumer_landfilling": lambda c: self.count_products_pathway("landfilling"),
-            "consumer_storing": lambda c: self.count_products_pathway("hoarding"),
-            "consumer_buying_new": lambda c: self.count_products_pathway("buy_new"),
-            "consumer_buying_used": lambda c: self.count_products_pathway("buy_used"),
+            "consumer_repairing": lambda c: self.count_consumers_pathway("repairing"),
+            "consumer_selling": lambda c: self.count_consumers_pathway("reselling"),
+            "consumer_recycling": lambda c: self.count_consumers_pathway("recycling"),
+            "consumer_landfilling": lambda c: self.count_consumers_pathway("landfilling"),
+            "consumer_storing": lambda c: self.count_consumers_pathway("hoarding"),
+            "consumer_buying_new": lambda c: self.count_consumers_pathway("buy_new"),
+            "consumer_buying_used": lambda c: self.count_consumers_pathway("buy_used"),
             "avg_new_product_price": lambda c: self.avg_new_product_price,
             "avg_used_product_price": lambda c: self.avg_used_product_price,
             'new_price_to_income': lambda c: self.report_output('new_price_to_income'),
@@ -311,6 +312,17 @@ class SmartphoneModel(Model):
         # used products
         num_stocks = 0
         total_used_price = 0
+
+        # for sechndstore in self.agents_by_type[SecondHandStore]:
+        #     if len(sechndstore.inventory) != 0:
+        #         for smartphone in sechndstore.inventory:
+        #             num_stocks += 1
+        #             total_used_price += smartphone.secondhand_market_price
+        # if num_stocks != 0:
+        #     avg_used_product_price = int(total_used_price / num_stocks)
+        # else:
+        #     avg_used_product_price = None
+
         for agent in self.agents:
             if isinstance(agent, SecondHandStore):
                 if len(agent.inventory) != 0:
@@ -331,30 +343,29 @@ class SmartphoneModel(Model):
         avg_new_product_price = total_new_price / self.num_producers
         self.avg_new_product_price = avg_new_product_price
 
-    def count_products_pathway(self, condition):
+    def count_consumers_pathway(self, condition):
         """
         Count adoption in each end of life pathway. Values are then
         reported by model's reporters.
         """
         count = 0
-        for agent in self.agents:
-            if isinstance(agent, Consumer):
-                if condition == "repairing" and agent.pathway_action == "repair":
-                    count += 1
-                elif condition == "selling" and agent.pathway_action == "sell":
-                    count += 1
-                elif condition == "recycling" and agent.pathway_action == "recycle":
-                    count += 1
-                elif condition == "landfilling" and agent.pathway_action == "landfill":
-                    count += 1
-                elif condition == "hoarding" and agent.pathway_action == "hoard":
-                    count += 1
-                elif condition == "buy_new" and agent.pathway_action == "new":
-                    count += 1
-                elif condition == "buy_used" and agent.pathway_action == "used":
-                    count += 1
-                else:
-                    continue
+        for agent in self.agents_by_type[Consumer]:
+            if condition == "repairing" and agent.pathway_action == "repair":
+                count += 1
+            elif condition == "reselling" and agent.pathway_action == "resell":
+                count += 1
+            elif condition == "recycling" and agent.pathway_action == "recycle":
+                count += 1
+            elif condition == "landfilling" and agent.pathway_action == "landfill":
+                count += 1
+            elif condition == "hoarding" and agent.pathway_action == "hoard":
+                count += 1
+            elif condition == "buy_new" and agent.pathway_action == "new":
+                count += 1
+            elif condition == "buy_used" and agent.pathway_action == "used":
+                count += 1
+            else:
+                continue
         return count
 
     def update_statistics(self):
@@ -526,5 +537,4 @@ class SmartphoneModel(Model):
         self.agents_by_type[SecondHandStore].shuffle_do('step')
         self.agents_by_type[Consumer].shuffle_do('step')
         self.agents_by_type[Recycler].shuffle_do('step')
-        
         self.datacollector.collect(self)
