@@ -519,7 +519,6 @@ class Consumer(Agent):
         trader = random.choice(all_recyclers)
         trader.recycle_from_customer(self.smartphone, self.unique_id)
         self.smartphone = None
-        # print(f"Consumer {self.consumer_id} recycled their smartphone.")
 
     def calculate_recycling_intention(self):
         """
@@ -550,7 +549,8 @@ class Consumer(Agent):
                 self.w_pbc_pc_rc * self.pbc_recycle[c] * self.pc_recycle[c] + \
                 self.w_mn_pc_rc * self.mn_recycle[c] * self.pc_recycle[c]
             
-            # Calculate recycling intention based on the Theory of Planned Behavior, including moral norm and privacy concern. 
+            # Calculate recycling intention based on the Theory of Planned Behavior, 
+            # including moral norm and privacy concern. 
             self.recycling_intention[c] = \
                 self.w_att_rc * self.att_recycle[c] + \
                 self.w_sn_rc * self.sn_recycle[c] + \
@@ -559,7 +559,7 @@ class Consumer(Agent):
                 self.w_pc_rc * self.pc_recycle[c] - \
                 self.w_md_rc * self.md_recycle[c]
 
-    def recycling_smartphone_tpb(self):
+    def recycle_smartphone_extend_tpb(self):
         """
         Determines the consumer's decision to recycle their smartphone based on the 
         Theory of Planned Behavior (TPB) model. It calculates the recycling intention score 
@@ -568,8 +568,9 @@ class Consumer(Agent):
         or a randomly selected recycler.
         """
         self.calculate_recycling_intention()
-        self.recycle_action = max(self.recycling_intention,
-                                key=self.recycling_intention.get)
+        self.recycle_action = max(
+            self.recycling_intention, key=self.recycling_intention.get)
+        
         if self.recycle_action == 'manufacturer':
             processor_id = self.smartphone.producer_id
             processor = self.model._agents[processor_id]
