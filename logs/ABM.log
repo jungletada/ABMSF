@@ -1,13 +1,12 @@
-2025-03-02 23:45:01,143 - batch_run.py - INFO: Index(['Unnamed: 0', 'RunId', 'iteration', 'Step', 'avg_consumer_income',
-       'consumer_proffer', 'consumer_reselling', 'consumer_recycling',
-       'consumer_landfilling', 'consumer_storing', 'consumer_buying_new',
-       'consumer_buying_used', 'avg_new_product_price',
-       'avg_used_product_price', 'new_price_to_income',
-       'used_price_to_income'],
+2025-03-02 23:47:12,931 - batch_run.py - INFO: Index(['RunId', 'iteration', 'Step', 'avg_consumer_income', 'consumer_proffer',
+       'consumer_reselling', 'consumer_recycling', 'consumer_landfilling',
+       'consumer_storing', 'consumer_buying_new', 'consumer_buying_used',
+       'avg_new_product_price', 'avg_used_product_price',
+       'new_price_to_income', 'used_price_to_income'],
       dtype='object')
-2025-03-02 23:45:03,899 - batch_run.py - INFO: Consumers buying action=[57120  3880]
+2025-03-02 23:47:15,242 - batch_run.py - INFO: Consumers buying action=[57007  3993]
  new,   used 
-['93.64', '6.36']
-2025-03-02 23:45:03,900 - batch_run.py - INFO: Consumers EoL actions=[ 8581  2524 16377  1194 31324]
+['93.45', '6.55']
+2025-03-02 23:47:15,242 - batch_run.py - INFO: Consumers EoL actions=[ 8283  2685 14827  1278 32927]
 proffer, resell, recycle, landfill, store
-['14.30', '4.21', '27.30', '1.99', '52.21']
+['13.80', '4.47', '24.71', '2.13', '54.88']
