@@ -53,7 +53,7 @@ class Smartphone(Agent):
         self.demand_used = random.uniform(0, 0.2) # demand of use for each smartphone
         self.discount_rate = random.uniform(0.9, 1) # demand of use for each smartphone
         self.material_value = 500 # material_value depends on the ingredients of product
-        self.warranty_duration = 6 if self.is_new else 0  # New phones come with 6 months warranty
+        self.warranty_duration = 12 if self.is_new else 0  # New phones come with 6 months warranty
         self.resell_value = self.calculate_resell_price_sechnd()  # Value if resold in the second-hand market
         
         # Recycle Service
@@ -108,11 +108,8 @@ class Smartphone(Agent):
         """
         if self.time_held <= self.warranty_duration:  # Phone is under warranty
             self.repair_cost = 0  # Free repair under warranty (or set to a very low cost)
-            # print(f"Phone is under warranty. Repair cost: {self.repair_cost}")
-        
         else:  # Phone is out of warranty, calculate repair cost based on performance and learning effect
-            max_cost = 0.1 * self.purchase_price  # Set the maximum repair cost (20% of purchase price)
-            self.repair_cost = max_cost * (1 - self.performance) # Basic repair cost based on performance
+            self.repair_cost = (1 - self.performance) / (0.02 + 2 / self.time_held) * self.purchase_price / 120
         return self.repair_cost
 
     def repair_product(self):
@@ -149,12 +146,9 @@ class Smartphone(Agent):
         # Normalized repair cost (repair cost relative to new phone price)
         self.calculate_repair_cost()
         normalized_repair_cost = self.repair_cost / self.purchase_price
-        # Calculate the buying price considering performance, repair cost, and demand for used phones
-        buying_price = self.purchase_price * self.performance * \
-            (1 - normalized_repair_cost) * (1 + self.demand_used) * self.discount_rate
-        buying_price = int(min(0.8 * self.purchase_price, buying_price))
-        self.resell_price = buying_price
-        return buying_price
+        self.resell_price = self.purchase_price * self.performance * \
+            (1 - normalized_repair_cost) * (0.475 + 2 / (self.time_held + 8)) * 0.9
+        return self.resell_price
 
     def calculate_sechnd_market_price(self):
         """
@@ -170,13 +164,9 @@ class Smartphone(Agent):
         """
         # Normalized repair cost (repair cost relative to new phone price)
         self.calculate_repair_cost()
-        # print(f'Smartphone repair {self.repair_cost}')
         normalized_repair_cost = self.repair_cost / self.purchase_price
-        # Calculate the buying price considering performance, repair cost, and demand for used phones
-        selling_price = self.purchase_price * self.performance * \
-            (1 + normalized_repair_cost) * (1 + self.demand_used)
-        self.secondhand_market_price = int(min(0.98 * self.purchase_price, selling_price))
-        # print(f'{self.model.steps},new {self.purchase_price}, used {self.secondhand_market_price}')
+        self.secondhand_market_price = self.purchase_price * self.performance * \
+            (1 + normalized_repair_cost) * (0.475 + 2 / (self.time_held + 8)) * 1.1
         return self.secondhand_market_price
     
     def calculate_trade_in_value(self):
@@ -195,10 +185,8 @@ class Smartphone(Agent):
         Returns:
             float: The recycled price for the used smartphone.
         """
-        # Recycled price based on material value and scaling factor alpha
-        self.recycle_price = self.discount_rec * (self.perf_rec * self.performance + \
-                self.time_rec / (1 + self.time_held) + \
-                    self.price_rec * self.purchase_price)
+        disc = np.random.normal(0.45, 0.05)
+        self.recycle_price = disc * (0.3 * self.performance + 0.05 / (48 + self.time_held)) * self.purchase_price
         return self.recycle_price
 
     def recycle_product(self, new_owner_id):

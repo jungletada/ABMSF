@@ -31,13 +31,8 @@ class AgentBasedModel(Model):
             num_sechdstores=20,
             prod_n_recyc_node_degree=5,
             prod_n_recyc_network_type="small-world",
-            init_eol_rate={"repair": 0.005, "sell": 0.01, "recycle": 0.1, "landfill": 0.4425, "hoard": 0.4425},
-            init_purchase_rate={"new": 0.9995, "used": 0.0005},
             product_growth=[0.166, 0.045],
             growth_threshold=10,
-            all_eol_pathways={"repair": True, "sell": True,
-                            "recycle": True, "landfill": True,
-                            "hoard": True},
             att_distrib_param_eol=[0.544, 0.1],
             att_distrib_param_reuse=[0.223, 0.262],
             repairability=0.55,
@@ -63,10 +58,6 @@ class AgentBasedModel(Model):
         self.prod_n_recyc_node_degree = prod_n_recyc_node_degree
         self.prod_n_recyc_network_type = prod_n_recyc_network_type
         
-        # Consumer
-        self.init_eol_rate = init_eol_rate # dictionary with initial end-of-life (EOL) ratios
-        self.init_purchase_choice = init_purchase_rate # dictionary with initial purchase ratios
-        
         # Manufacturer
         self.init_product_prices = np.linspace(1999, 6999, num_producers)
         self.avg_new_product_price = 0
@@ -76,7 +67,6 @@ class AgentBasedModel(Model):
         # System
         self.running = True
         self.color_map = []
-        self.all_eol_pathways = all_eol_pathways
         
         self.all_comsumer_income = []
         self.avg_comsumer_income = 0.
@@ -171,8 +161,8 @@ class AgentBasedModel(Model):
         # Defines reporters and setup data collector
         model_reporters = {
             "avg_consumer_income": lambda c:self.avg_comsumer_income,
-            "consumer_repairing": lambda c: self.count_consumers_pathway("repairing"),
-            "consumer_selling": lambda c: self.count_consumers_pathway("reselling"),
+            "consumer_proffer": lambda c: self.count_consumers_pathway("proffer"),
+            "consumer_reselling": lambda c: self.count_consumers_pathway("reselling"),
             "consumer_recycling": lambda c: self.count_consumers_pathway("recycling"),
             "consumer_landfilling": lambda c: self.count_consumers_pathway("landfilling"),
             "consumer_storing": lambda c: self.count_consumers_pathway("hoarding"),
@@ -182,38 +172,6 @@ class AgentBasedModel(Model):
             "avg_used_product_price": lambda c: self.avg_used_product_price,
             'new_price_to_income': lambda c: self.report_output('new_price_to_income'),
             'used_price_to_income':lambda c: self.report_output('used_price_to_income'),
-            # "Total product": lambda c:self.report_output("product_stock"),
-            # "New product": lambda c:self.report_output("product_stock_new"),
-            # "Used product": lambda c:self.report_output("product_stock_used"),
-            # "New product_mass": lambda c:self.report_output("prod_stock_new_mass"),
-            # "Used product_mass": lambda c:self.report_output("prod_stock_used_mass"),
-            # "EoL-repaired": lambda c:self.report_output("product_repaired"),
-            # "EoL-sold": lambda c: self.report_output("product_sold"),
-            # "EoL-recycled": lambda c:self.report_output("product_recycled"),
-            # "EoL-landfilled": lambda c:self.report_output("product_landfilled"),
-            # "EoL-stored": lambda c:self.report_output("product_hoarded"),
-            # "EoL-new repaired weight": lambda c:self.report_output("product_new_repaired"),
-            # "EoL-new sold weight": lambda c:self.report_output("product_new_sold"),
-            # "EoL-new recycled weight": lambda c:self.report_output("product_new_recycled"),
-            # "EoL-new landfilled weight": lambda c:self.report_output("product_new_landfilled"),
-            # "EoL-new stored weight": lambda c:self.report_output("product_new_hoarded"),
-            # "EoL-used repaired weight": lambda c:self.report_output("product_used_repaired"),
-            # "EoL-used sold weight": lambda c:self.report_output("product_used_sold"),
-            # "EoL-used recycled weight": lambda c:self.report_output("product_used_recycled"),
-            # "EoL-used landfilled weight": lambda c:self.report_output("product_used_landfilled"),
-            # "EoL-used stored weight": lambda c:self.report_output("product_used_hoarded"),
-            # "Average landfilling cost": lambda c:self.report_output("average_landfill_cost"),
-            # "Average storing cost": lambda c:self.report_output("average_hoarding_cost"),
-            # "Average recycling cost": lambda c:self.report_output("average_recycling_cost"),
-            # "Average repairing cost": lambda c:self.report_output("average_repairing_cost"),
-            # "Average selling cost": lambda c:self.report_output("average_second_hand_price"),
-            # "Recycled material volume": lambda c:self.report_output("recycled_mat_volume"),
-            # "Recycled material value": lambda c:self.report_output("recycled_mat_value"),
-            # "Producer costs": lambda c:self.report_output("producer_costs"),
-            # "Consumer costs": lambda c:self.report_output("consumer_costs"),
-            # "Recycler costs": lambda c:self.report_output("recycler_costs"),
-            # "Refurbisher costs": lambda c:self.report_output("refurbisher_costs"),
-            # "Refurbisher costs w margins": lambda c:self.report_output("refurbisher_costs_w_margins")
             }
 
         agent_reporters = {
@@ -298,15 +256,15 @@ class AgentBasedModel(Model):
         else:
             return nx.watts_strogatz_graph(nodes, node_degree, rewiring_prob)
 
-    def waste_generation(self, avg_lifetime, failure_rate, num_product):
-        """
-        Generate waste, called by consumers and recyclers/refurbishers
-        (to get original recycling/repairing amounts).
-        """
-        correction_year = len(self.total_number_product) - 1
-        return [j * (1 - math.e ** (-(((self.step + (correction_year - z)) /
-                               avg_lifetime[z]) ** failure_rate))).real
-                for (z, j) in enumerate(num_product)]
+    # def waste_generation(self, avg_lifetime, failure_rate, num_product):
+    #     """
+    #     Generate waste, called by consumers and recyclers/refurbishers
+    #     (to get original recycling/repairing amounts).
+    #     """
+    #     correction_year = len(self.total_number_product) - 1
+    #     return [j * (1 - math.e ** (-(((self.step + (correction_year - z)) /
+    #                            avg_lifetime[z]) ** failure_rate))).real
+    #             for (z, j) in enumerate(num_product)]
 
     def count_average_product_price(self):
         # used products
@@ -350,7 +308,7 @@ class AgentBasedModel(Model):
         """
         count = 0
         for agent in self.agents_by_type[Consumer]:
-            if condition == "repairing":
+            if condition == "proffer":
                 count += agent.to_proffer
             elif condition == "reselling":
                 count += agent.to_resell
