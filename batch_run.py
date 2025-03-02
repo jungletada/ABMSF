@@ -17,20 +17,20 @@ if __name__ == '__main__':
     os.makedirs('results', exist_ok=True)
     os.makedirs('logs', exist_ok=True)
 
-    csv_file = 'results/output_batch.csv'
-    # results = mesa.batch_run(
-    #     AgentBasedModel,
-    #     parameters={},
-    #     iterations=1,
-    #     max_steps=120,
-    #     number_processes=1,
-    #     data_collection_period=1,
-    #     display_progress=True,
-    # )
-    # results_df = pd.DataFrame(results)
-    # results_df.to_csv(csv_file)
+    csv_file = 'results/_output_batch.csv'
+    results = mesa.batch_run(
+        AgentBasedModel,
+        parameters={},
+        iterations=1,
+        max_steps=120,
+        number_processes=1,
+        data_collection_period=1,
+        display_progress=True,
+    )
+    results_df = pd.DataFrame(results)
+    results_df.to_csv(csv_file)
 
-    results_df = pd.read_csv('results/_output_batch_1.csv')
+    # results_df = pd.read_csv('results/_output_batch_1.csv')
     setup_logger(filename='logs/ABM.log')
     logging.info(results_df.keys())
 
