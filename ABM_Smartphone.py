@@ -152,9 +152,9 @@ class Smartphone(Agent):
         # Calculate the buying price considering performance, repair cost, and demand for used phones
         buying_price = self.purchase_price * self.performance * \
             (1 - normalized_repair_cost) * (1 + self.demand_used) * self.discount_rate
-        self.secondhand_market_price = int(min(0.8 * self.purchase_price, buying_price))
+        buying_price = int(min(0.8 * self.purchase_price, buying_price))
         self.resell_price = buying_price
-        return self.resell_price
+        return buying_price
 
     def calculate_sechnd_market_price(self):
         """
@@ -196,8 +196,7 @@ class Smartphone(Agent):
             float: The recycled price for the used smartphone.
         """
         # Recycled price based on material value and scaling factor alpha
-        self.recycle_price = self.discount_rec * \
-            (self.perf_rec * self.performance + \
+        self.recycle_price = self.discount_rec * (self.perf_rec * self.performance + \
                 self.time_rec / (1 + self.time_held) + \
                     self.price_rec * self.purchase_price)
         return self.recycle_price

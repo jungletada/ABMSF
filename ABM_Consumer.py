@@ -1,7 +1,9 @@
 import math
+import copy
 import random
 import numpy as np
 from collections import OrderedDict
+
 from scipy.stats import truncnorm
 from mesa import Agent
 
@@ -10,12 +12,12 @@ from ABM_SecHandStore import SecondHandStore
 from ABM_Recycler import Recycler
 
 
-def distribute_attitude_level(a, b, loc, scale):
+def distribute_attitude_level(mu=0, sigma=0.05):
     """
     Distribute pro-environmental attitude level toward 
     the decision in the population.
     """
-    distribution = truncnorm(a, b, loc, scale)
+    distribution = truncnorm(0, 1, loc=mu, scale=sigma)
     attitude_level = float(distribution.rvs(1))
     return attitude_level
 
@@ -43,7 +45,7 @@ class Consumer(Agent):
             model,
             unique_id,
             preference_id,
-            max_time_hoard=60):
+            max_time_store=60):
         """
         Initialize a Consumer agent.
 
@@ -68,47 +70,60 @@ class Consumer(Agent):
         self.income = int(np.random.lognormal(self.i_mu, self.i_sigma, 1))
         self.increase_interval = random.randint(0, 11)
 
-        self.repair_cost = 0
-        self.repair_min_perf = 0.35
+        self.repair_att = float(np.random.normal(0.5, 0.05))
+        self.individual_min_perf = 0.65
+        self.repair_min_perf = 0.40
         self.repair_max_perf = 0.85
-        self.repair_max_times = 6
+        self.repair_max_times = random.randint(2, 7)
 
         self.resell_cost = 0
-        self.landfill_cost = float(np.random.normal(0., 0.05))
-
-        self.hoard_cost = float(np.random.normal(0., 0.05))
-        self.hoard_min_perf = 0.3
+        self.landfill_cost = distribute_attitude_level(0, 0.05)
+        self.proffer_cost = distribute_attitude_level(0, 0.01)
+        self.store_cost = distribute_attitude_level(0, 0.01)
+        self.store_min_perf = 0.3
         self.recycle_cost = 0
-
-        self.max_time_hoard = max_time_hoard
-        self.num_cumulative_purchase_new = 0
-        self.num_cumulative_purchase_used = 0
+        self.store_product_list = []
+        self.proffer_product_list = []
+        
+        self.max_time_store = max_time_store
+        
+        self.to_buy_new = 0
+        self.to_buy_used = 0
+        self.to_proffer = 0
+        self.to_recycle = 0
+        self.to_resell = 0
+        self.to_landfill = 0
+        self.to_store = 0
         
         # column sum up to 1
-        self.eol_choices = ["repair", "resell", "recycle", "landfill", "hoard"]
-        self.weight_att_eol = {"repair": 0.45,
-                               "resell": 0.45,
-                               "recycle": 0.55,
-                               "landfill": 0.45,
-                               "hoard": 0.55}
-        
-        self.weight_sn_eol =  {"repair": 0.1,
-                               "resell": 0.40,
-                               "recycle": 0.1,
-                               "landfill": 0.1,
-                               "hoard": 0.1}
-        
-        self.weight_pbc_eol = {"repair": 0.45,
+        self.eol_choices = ["proffer", 
+                            "resell", 
+                            "recycle", 
+                            "landfill", 
+                            "store"]
+        self.weight_pbc_eol = {"proffer": 0.35,
                                "resell": 0.15,
-                               "recycle": 0.35,
+                               "recycle": 0.30,
                                "landfill": 0.55,
-                               "hoard": 0.45}
+                               "store": 0.40}
+        
+        self.weight_sn_eol =  {"proffer": 0.3,
+                               "resell": 0.40,
+                               "recycle": 0.35,
+                               "landfill": 0.1,
+                               "store": 0.05}
+        
+        self.weight_att_eol = {"proffer": 0.35,
+                               "resell": 0.45,
+                               "recycle": 0.35,
+                               "landfill": 0.45,
+                               "store": 0.45}
         # Need to update
-        self.pbc_costs_eol =  {"repair": 0.1,
+        self.pbc_costs_eol =  {"proffer": 0.1,
                                "resell": 0.1,
                                "recycle": 0.1,
                                "landfill": 0.1,
-                               "hoard": 0.1}
+                               "store": 0.1}
 
         # column sum up to 1
         self.purchase_choices = ["used", "new"]
@@ -119,7 +134,7 @@ class Consumer(Agent):
         # Need to update
         self.pbc_costs_purchase =  {"used": 0., "new": 0.}
         self.att_level_buy_used = float(np.random.normal(0.5, 0.05))
-        self.att_level_recycle = float(np.random.normal(0.4, 0.05))
+        self.att_level_recycle = float(np.random.normal(0.3, 0.05))
         self.behavior_intention = {}
 
         # Recycle PBC intention
@@ -224,7 +239,7 @@ class Consumer(Agent):
     def tpb_subjective_norm(self, decision, weight_sn):
         """
         Parameters:
-            decision (str): The type of decision being made (e.g., "repair, resell, recycle" or "used, new").
+            decision (str): The type of decision being made (e.g., "proffer, resell, recycle" or "used, new").
             weight_sn (dict): A dictionary of weights for each choice in the subjective norm calculation.
         Returns:
             proportion_sn (dict): A dictionary containing the proportion of neighbors making each choice, 
@@ -314,30 +329,31 @@ class Consumer(Agent):
             self.behavior_intention[choice] = \
                 pbc_values[choice] + sn_values[choice] + att_values[choice]
             #######################################################################
-            if decision == "eol_pathway":
-                print(f'Consumer {self.unique_id}, {choice}, sum={self.behavior_intention[choice]:.2f}, ' 
+            if decision == "eol_pathway" and self.unique_id % 100 == 0 and self.model.steps % 12 == 0:
+                print(f't={self.model.steps}, Consumer {self.unique_id}, {choice}, sum={self.behavior_intention[choice]:.2f}, ' 
                   f'[pbc={pbc_values[choice]:.2f}, sn={sn_values[choice]:.2f}, att={att_values[choice]:.2f}]')
         
         self.pathway_action = max(self.behavior_intention, key=self.behavior_intention.get)
         
-        if self.pathway_action == "hoard":
-            if self.smartphone.performance <= self.hoard_min_perf: # exceed max_time_hoard
-                valid_choices = ["recycle", "landfill"]
-                self.pathway_action = max(valid_choices, key=lambda k: self.behavior_intention[k])
-                return
-        elif self.pathway_action == "repair":
-            if self.smartphone.performance <= self.repair_min_perf:
-                valid_choices = ["recycle", "landfill"]
-                self.pathway_action = max(valid_choices, key=lambda k: self.behavior_intention[k])
-                return
-            elif self.smartphone.performance >= self.repair_max_perf:
-                valid_choices = ["resell", "hoard"]
-                self.pathway_action = max(valid_choices, key=lambda k: self.behavior_intention[k])
-                return
-            if self.smartphone.repair_times >= self.repair_max_times:
-                valid_choices = ["recycle", "landfill"]
-                self.pathway_action = max(valid_choices, key=lambda k: self.behavior_intention[k])
-                return
+        # if self.pathway_action == "store":
+        #     if self.smartphone.performance <= self.store_min_perf: # exceed max_time_store
+        #         valid_choices = ["recycle", "landfill"]
+        #         self.pathway_action = max(valid_choices, key=lambda k: self.behavior_intention[k])
+        #         return
+        
+        # elif self.pathway_action == "proffer":
+        #     if self.smartphone.performance <= self.repair_min_perf:
+        #         valid_choices = ["recycle", "landfill"]
+        #         self.pathway_action = max(valid_choices, key=lambda k: self.behavior_intention[k])
+        #         return
+        #     elif self.smartphone.performance >= self.repair_max_perf:
+        #         valid_choices = ["resell", "store"]
+        #         self.pathway_action = max(valid_choices, key=lambda k: self.behavior_intention[k])
+        #         return
+        #     if self.smartphone.repair_times >= self.repair_max_times:
+        #         valid_choices = ["recycle", "landfill"]
+        #         self.pathway_action = max(valid_choices, key=lambda k: self.behavior_intention[k])
+        #         return
 
         # if decision == "eol_pathway":
         #     print(f'Consumer {self.unique_id} decides to {self.pathway_action} the smartphone.')
@@ -351,20 +367,27 @@ class Consumer(Agent):
         It also updates the Perceived Behavioral Control (PBC) costs used in the 
         Theory of Planned Behavior (TPB) decision making.
         """
-        # repair cost need to be paid by consumer
-        self.repair_cost = self.smartphone.calculate_repair_cost()
         # resell cost is paid by second-hand store
         self.resell_cost = -self.smartphone.calculate_resell_price_sechnd()
         # recycle cost is paid by second-hand store
         self.recycle_cost = -self.smartphone.calculate_recycle_price()
         self.pbc_costs_eol = {
-            "repair": self.repair_cost / self.income, 
-            "resell": self.resell_cost / self.income / 5, 
+            "proffer": self.proffer_cost, 
+            "resell": self.resell_cost / self.income / 8, 
             "recycle": self.recycle_cost / self.income / 5, 
             "landfill": self.landfill_cost, 
-            "hoard": self.hoard_cost}
+            "store": self.store_cost}
         # print(f'{self.unique_id}, {self.pbc_costs_eol}')
 
+    def reset_action(self):
+        self.to_buy_new = 0
+        self.to_buy_used = 0
+        self.to_proffer = 0
+        self.to_recycle = 0
+        self.to_resell = 0
+        self.to_landfill = 0
+        self.to_store = 0
+        
     def use_smartphone(self):
         """
         Update smartphone usage time and state for the current consumer.
@@ -588,8 +611,21 @@ class Consumer(Agent):
         if self.smartphone is not None:
             self.smartphone.remove()
         self.smartphone = None
-        # print(f"Consumer {self.consumer_id} landfilled their smartphone.")
-
+        # print(f"Consumer {self.consumer_id} landfill their smartphone.")
+    
+    def store_smartphone(self):
+        """
+        Disposing the current smartphone in a landfill.
+        """
+        # if self.smartphone is not None:
+        #     self.store_product_list.append(copy.deepcopy(self.smartphone))
+        self.smartphone = None
+        
+    def proffer_smartphone(self):
+        # if self.smartphone is not None:
+        #     self.proffer_product_list.append((copy.deepcopy(self.smartphone)))
+        self.smartphone = None
+        
     def step(self):
         """
         Main simulation step for the consumer.
@@ -597,6 +633,7 @@ class Consumer(Agent):
         if (self.model.steps + self.increase_interval) % 12 == 0:
             self.update_income() # update the income according to Matthew Effect
         
+        self.reset_action()
         # Check if the consumer needs a smartphone and update 'self.to_purchase'
         self.to_purchase = self.smartphone is None
         if self.to_purchase:
@@ -614,16 +651,23 @@ class Consumer(Agent):
             self.purchase_smartphone()
 
             if self.pathway_action == 'used':
-                self.num_cumulative_purchase_used += 1
+                self.to_buy_used = 1
             else:
-                self.num_cumulative_purchase_new += 1
-
+                self.to_buy_new = 1
+                
             self.use_smartphone()
-
+        
         else:
-            # Use the smartphone and check EoL decision
+            self.use_smartphone() # use smartphone
+            if self.repair_min_perf <= self.smartphone.performance <= self.repair_max_perf \
+             and self.smartphone.repair_times <= self.repair_max_times: # repair smartphone 
+                if random.random() <= self.repair_att:
+                    self.smartphone.repair_product()
+                    self.smartphone.repair_times += 1
+                    # print(f'{self.unique_id} to repair, with perf {self.smartphone.performance}')
+            
             self.update_eol_cost()
-            self.use_smartphone()
+            # if self.smartphone.performance <= self.individual_min_perf:
             self.tpb_decision(
                 decision='eol_pathway',
                 weight_att=self.weight_att_eol,
@@ -632,16 +676,22 @@ class Consumer(Agent):
                 pbc_costs=self.pbc_costs_eol,
                 att_level_env=self.att_level_recycle)
             
-            if self.pathway_action == "hoard":
-                pass
+            if self.pathway_action == "store":
+                self.store_smartphone()
+                self.to_store = 1
+                
             elif self.pathway_action == "resell":
                 self.sell_smartphone_to_sechnd_store()
-
+                self.to_resell = 1
+                
             elif self.pathway_action == "recycle":
                 self.recycle_smartphone()
+                self.to_recycle = 1
                 
             elif self.pathway_action == "landfill":
                 self.landfill_smartphone()
+                self.to_landfill = 1
                                 
-            elif self.pathway_action == "repair":
-                self.repair_smartphone()
+            elif self.pathway_action == "proffer":
+                self.proffer_smartphone()
+                self.to_proffer = 1

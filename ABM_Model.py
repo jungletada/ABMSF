@@ -350,20 +350,20 @@ class AgentBasedModel(Model):
         """
         count = 0
         for agent in self.agents_by_type[Consumer]:
-            if condition == "repairing" and agent.pathway_action == "repair":
-                count += 1
-            elif condition == "reselling" and agent.pathway_action == "resell":
-                count += 1
-            elif condition == "recycling" and agent.pathway_action == "recycle":
-                count += 1
-            elif condition == "landfilling" and agent.pathway_action == "landfill":
-                count += 1
-            elif condition == "hoarding" and agent.pathway_action == "hoard":
-                count += 1
-            elif condition == "buy_new" and agent.pathway_action == "new":
-                count += 1
-            elif condition == "buy_used" and agent.pathway_action == "used":
-                count += 1
+            if condition == "repairing":
+                count += agent.to_proffer
+            elif condition == "reselling":
+                count += agent.to_resell
+            elif condition == "recycling":
+                count += agent.to_recycle
+            elif condition == "landfilling":
+                count += agent.to_landfill
+            elif condition == "hoarding":
+                count += agent.to_store
+            elif condition == "buy_new":
+                count += agent.to_buy_new
+            elif condition == "buy_used":
+                count += agent.to_buy_used
             else:
                 continue
         return count

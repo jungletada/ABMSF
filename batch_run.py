@@ -44,7 +44,9 @@ if __name__ == '__main__':
     buying_array = np.array([total_new, total_used])
     all_num_buying = buying_array.sum()
     ratio_buying = buying_array / all_num_buying * 100.
-    logging.info(f'Consumers buying action={ratio_buying}')
+    logging.info(
+        f'Consumers buying action={buying_array}, '
+        f'percentage={[f"{x:.2f}" for x in ratio_buying]}')
     
     num_repairing = results_df["consumer_repairing"].sum()
     num_selling = results_df["consumer_selling"].sum()
@@ -54,4 +56,6 @@ if __name__ == '__main__':
     eol_array = np.array([num_repairing, num_selling, num_recycling, num_landfilling, num_storing])
     all_num_eol = eol_array.sum()
     ratio_eol = eol_array / all_num_eol * 100.
-    logging.info(f'Consumers EoL actions={ratio_eol}')
+    logging.info(
+        f'Consumers EoL actions={eol_array}, '
+        f'percentage={[f"{x:.2f}" for x in ratio_eol]}')
