@@ -171,12 +171,16 @@ class Smartphone(Agent):
     
     def calculate_trade_in_value(self):
         """Model the Manufacturer Recycling for Trade-in (Old-for-New Service)"""
-        self.trade_in_value = self.discount_tiv * \
-            (self.perf_tiv * self.performance + \
-                self.time_tiv / (1 + self.time_held) + \
-                    self.price_tiv * self.purchase_price)
+        if self.time_held <= 36:
+            disc = np.random.normal(0.47, 0.1)
+            trade_in_value = disc * (0.3 * self.performance + 0.0455 / (48 + self.time_held)) * self.purchase_price
+            self.trade_in_value = max(trade_in_value, 50)
+        else:
+            disc = np.random.normal(0.3, 0.1)
+            trade_in_value = disc * (0.3 * self.performance + 0.0455 / (72 + self.time_held)) * self.purchase_price
+            self.trade_in_value = max(trade_in_value, 50)
         return self.trade_in_value
-    
+     
     def calculate_recycle_price(self):
         """
         Calculate the recycled price for a used smartphone based 

@@ -40,6 +40,7 @@ if __name__ == '__main__':
     plot_price2income(results_df)
     plot_eol_pie(results_df)
     plot_buying_pie(results_df)
+    
     #############################################################
     total_new = results_df["consumer_buying_new"].sum()
     total_used = results_df["consumer_buying_used"].sum()
@@ -47,7 +48,7 @@ if __name__ == '__main__':
     all_num_buying = buying_array.sum()
     ratio_buying = buying_array / all_num_buying * 100.
     logging.info(
-        f'Consumers buying action={buying_array}\n'
+        f'\nConsumers buying action={buying_array}\n'
         f' new,   used \n'
         f'{[f"{x:.2f}" for x in ratio_buying]}')
     
@@ -60,7 +61,12 @@ if __name__ == '__main__':
     all_num_eol = eol_array.sum()
     ratio_eol = eol_array / all_num_eol * 100.
     logging.info(
-        f'Consumers EoL actions={eol_array}\n'
+        f'\nConsumers EoL actions={eol_array}\n'
         f'proffer, resell, recycle, landfill, store\n'
         f'{[f"{x:.2f}" for x in ratio_eol]}')
     
+    num_rec_mnf = results_df["consumer_recycle_manufactor"].sum()
+    num_rec_rcl = results_df["consumer_recycle_recycler"].sum()
+    rec_array = np.array([num_rec_mnf, num_rec_rcl])
+    logging.info(
+        f'\nConsumers recycling actions={rec_array}, {num_rec_rcl / num_rec_mnf}\n')

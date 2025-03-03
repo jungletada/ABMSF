@@ -77,16 +77,10 @@ class Consumer(Agent):
         self.repair_max_times = random.randint(2, 7)
 
         self.resell_cost = 0
-        self.landfill_cost = 0
-        self.proffer_cost = 0
-        self.store_cost = 0
-        
-        self.store_min_perf = 0.3
         self.recycle_cost = 0
-        self.store_product_list = []
-        self.proffer_product_list = []
-        
-        self.max_time_store = max_time_store
+        self.proffer_cost = float(np.random.normal(-39, 0.5))
+        self.landfill_cost = float(np.random.normal(-1, 0.1))
+        self.store_cost = float(np.random.normal(-15, 0.25))
         
         self.to_buy_new = 0
         self.to_buy_used = 0
@@ -95,8 +89,9 @@ class Consumer(Agent):
         self.to_resell = 0
         self.to_landfill = 0
         self.to_store = 0
+        self.recycle_with_manufactor = 0
+        self.recycle_with_recycler = 0
         
-        # column sum up to 1
         self.eol_choices = ["proffer", 
                             "resell", 
                             "recycle", 
@@ -126,7 +121,6 @@ class Consumer(Agent):
                                "landfill": 0.1,
                                "store": 0.1}
 
-        # column sum up to 1
         self.purchase_choices = ["used", "new"]
         self.weight_pbc_purchase = {"used": 0.52, "new": 0.145}
         self.weight_sn_purchase =  {"used": 0.10, "new": 0.2}
@@ -140,6 +134,7 @@ class Consumer(Agent):
 
         # Recycle PBC intention
         self.trade_in_id = None
+        
         self.w_att_rc = 0.45
         self.w_sn_rc = 0.35
         self.w_pbc_rc = 0.35
@@ -153,14 +148,15 @@ class Consumer(Agent):
         self.w_mn_pc_rc = 0.25
 
         self.recycle_choices = ['manufacturer', 'recycler']
-        self.att_recycle = {'manufacturer': 0.5, 'recycler': 0.5}
-        self.sn_recycle =  {'manufacturer': 0.5, 'recycler': 0.5}
-        self.pbc_recycle = {'manufacturer': 0.5, 'recycler': 0.5}
-        self.mn_recycle =  {'manufacturer': 0.5, 'recycler': 0.5}
-        self.pc_recycle =  {'manufacturer': 0.5, 'recycler': 0.5}
-        self.md_recycle =  {'manufacturer': 0.5, 'recycler': 0.5}
+        self.att_recycle = {'manufacturer': 0.253, 'recycler': 0.545}
+        self.sn_recycle =  {'manufacturer': 0.455, 'recycler': 0.557}
+        self.pbc_recycle = {'manufacturer': 0.465, 'recycler': 0.775}
+        self.mn_recycle =  {'manufacturer': 0.155, 'recycler': 0.365}
+        self.pc_recycle =  {'manufacturer': 0.235, 'recycler': 0.235}
+        self.md_recycle =  {'manufacturer': 0.265, 'recycler': 0.245}
+        
         self.recycling_intention = {}
-        self.recycle_action = None
+        self.recycle_action = 'manufacturer' if random.random() <= 0.5 else 'recycler'
 
         # Get ID for recyclers and manufacturer
         self.recycling_facility_id = model.num_consumers + random.randrange(model.num_recyclers)
@@ -185,7 +181,7 @@ class Consumer(Agent):
             local_avg_used_product_price = None
         self.pbc_costs_purchase = {
             'used': local_avg_used_product_price,
-            'new': self.model.avg_new_product_price / 1.6}
+            'new': self.model.avg_new_product_price / 1.58}
         
     def update_income(self, growth_rate=0.1):
         """
@@ -344,20 +340,16 @@ class Consumer(Agent):
         It also updates the Perceived Behavioral Control (PBC) costs used in the 
         Theory of Planned Behavior (TPB) decision making.
         """
-        self.proffer_cost = -0.0039 # float(np.random.normal(-0.004, 1e-6))
         self.resell_cost = -self.smartphone.calculate_resell_price_sechnd()
         self.recycle_cost = -self.smartphone.calculate_recycle_price()
-        self.landfill_cost = -0.0001
-        self.store_cost = -0.0015
-        
         self.pbc_costs_eol = {
             "proffer": self.proffer_cost, 
-            "resell": self.resell_cost / self.income / 65, 
-            "recycle": self.recycle_cost / self.income / 15, 
+            "resell": self.resell_cost / self.income * 153.846, 
+            "recycle": self.recycle_cost / self.income * 666.667, 
             "landfill": self.landfill_cost, 
             "store": self.store_cost}
 
-    def reset_action(self):
+    def reset_action_count(self):
         self.to_buy_new = 0
         self.to_buy_used = 0
         self.to_proffer = 0
@@ -365,6 +357,8 @@ class Consumer(Agent):
         self.to_resell = 0
         self.to_landfill = 0
         self.to_store = 0
+        self.recycle_with_manufactor = 0
+        self.recycle_with_recycler = 0
         
     def use_smartphone(self):
         """
@@ -380,9 +374,11 @@ class Consumer(Agent):
         or a second-hand store for a used phone.
         """
         if self.trade_in_id is not None:
-            trader = self.model._agents[self.trade_in_id]
-            self.smartphone = trader.trade_with_consumer(self.unique_id)
-            self.trade_in_id = None
+            all_mnf = self.model.agents_by_type[Manufacturer]
+            for agent in all_mnf:
+                if agent.unique_id == self.trade_in_id:
+                    self.smartphone = agent.trade_with_consumer(self.unique_id)
+                    self.trade_in_id = None
         else:
             #======================== Purchase New Phone ========================#
             if self.pathway_action == "new":
@@ -529,8 +525,9 @@ class Consumer(Agent):
         """
         tiv = self.smartphone.calculate_trade_in_value()
         rec = self.smartphone.calculate_recycle_price()
-        self.pbc_recycle[self.recycle_choices[0]] = tiv / (tiv + rec)
-        self.pbc_recycle[self.recycle_choices[1]] = rec / (tiv + rec)
+        
+        self.pbc_recycle['manufacturer'] = tiv / (tiv + rec)
+        self.pbc_recycle['recycler'] = rec / (tiv + rec)
 
         neighbor_agents = self.model.grid.get_neighbors(
             self.pos, include_center=False, radius=1)
@@ -544,20 +541,23 @@ class Consumer(Agent):
             # Combine privacy concern with attention, subjective norm, 
             # perceived behavioral control, and moral norm.
             self.md_recycle[c] = \
-                self.w_att_pc_rc * self.att_recycle[c] * self.pc_recycle[c] + \
-                self.w_sn_pc_rc * self.sn_recycle[c] * self.pc_recycle[c] + \
-                self.w_pbc_pc_rc * self.pbc_recycle[c] * self.pc_recycle[c] + \
-                self.w_mn_pc_rc * self.mn_recycle[c] * self.pc_recycle[c]
+                (0.605 * self.att_recycle[c] + \
+                 0.145 * self.sn_recycle[c] + \
+                 0.145 * self.pbc_recycle[c] + \
+                 0.105 * self.mn_recycle[c]) * self.pc_recycle[c]
             
             # Calculate recycling intention based on the Theory of Planned Behavior, 
             # including moral norm and privacy concern. 
             self.recycling_intention[c] = \
-                self.w_att_rc * self.att_recycle[c] + \
-                self.w_sn_rc * self.sn_recycle[c] + \
-                self.w_pbc_rc * self.pbc_recycle[c] + \
-                self.w_mn_rc * self.mn_recycle[c] - \
-                self.w_pc_rc * self.pc_recycle[c] - \
-                self.w_md_rc * self.md_recycle[c]
+                0.10  * self.att_recycle[c] + \
+                0.05  * self.sn_recycle[c] + \
+                0.10  * self.pbc_recycle[c] + \
+                0.05  * self.mn_recycle[c] - \
+                0.455 * self.pc_recycle[c] - \
+                0.245 * self.md_recycle[c]
+        
+        if self.unique_id % 100 == 0:
+            print(f't={self.model.steps}, {self.unique_id}, {self.recycling_intention}')
 
     def recycle_smartphone_extend_tpb(self):
         """
@@ -572,16 +572,18 @@ class Consumer(Agent):
             self.recycling_intention, key=self.recycling_intention.get)
         
         if self.recycle_action == 'manufacturer':
-            processor_id = self.smartphone.producer_id
-            processor = self.model._agents[processor_id]
-            self.trade_in_id = processor_id
-            processor.recycle_from_customer(self.smartphone, self.unique_id)
+            self.recycle_with_manufactor = 1
+            producer_id = self.smartphone.producer_id
+            all_mnf = self.model.agents_by_type[Manufacturer]
+            self.trade_in_id = producer_id
+            for agent in all_mnf:
+                if agent.unique_id == producer_id:
+                    agent.recycle_from_customer(self.smartphone, self.unique_id)
         else:
-            recyclers = [agent for agent in self.model.agents
-                             if isinstance(agent, Recycler)]
-            processor = random.choice(recyclers)
+            self.recycle_with_recycler = 1
+            processor = random.choice(self.model.agents_by_type[Recycler])
             processor.recycle_from_customer(self.smartphone, self.unique_id)
-            self.smartphone = None
+        self.smartphone = None
     
     def landfill_smartphone(self):
         """
@@ -590,19 +592,17 @@ class Consumer(Agent):
         if self.smartphone is not None:
             self.smartphone.remove()
         self.smartphone = None
-        # print(f"Consumer {self.consumer_id} landfill their smartphone.")
     
     def store_smartphone(self):
         """
-        Disposing the current smartphone in a landfill.
+        Disposing the EoL smartphone for storation.
         """
-        # if self.smartphone is not None:
-        #     self.store_product_list.append(copy.deepcopy(self.smartphone))
-        self.smartphone = None
+        if self.smartphone is not None:
+            self.smartphone = None
         
     def proffer_smartphone(self):
-        # if self.smartphone is not None:
-        #     self.proffer_product_list.append((copy.deepcopy(self.smartphone)))
+        if self.smartphone is not None:
+            self.smartphone.remove()
         self.smartphone = None
         
     def step(self):
@@ -612,7 +612,7 @@ class Consumer(Agent):
         if (self.model.steps + self.increase_interval) % 12 == 0:
             self.update_income() # update the income according to Matthew Effect
         
-        self.reset_action()
+        self.reset_action_count()
         # Check if the consumer needs a smartphone and update 'self.to_purchase'
         self.to_purchase = self.smartphone is None
         if self.to_purchase:
@@ -664,7 +664,7 @@ class Consumer(Agent):
                 self.to_resell = 1
                 
             elif self.pathway_action == "recycle":
-                self.recycle_smartphone()
+                self.recycle_smartphone_extend_tpb()
                 self.to_recycle = 1
                 
             elif self.pathway_action == "landfill":
