@@ -44,8 +44,7 @@ class Consumer(Agent):
             self,
             model,
             unique_id,
-            preference_id,
-            max_time_store=60):
+            preference_id):
         """
         Initialize a Consumer agent.
 
@@ -123,7 +122,7 @@ class Consumer(Agent):
 
         self.purchase_choices = ["used", "new"]
         self.weight_pbc_purchase = {"used": 0.52, "new": 0.145}
-        self.weight_sn_purchase =  {"used": 0.10, "new": 0.2}
+        self.weight_sn_purchase =  {"used": 0.10, "new": 0.200}
         self.weight_att_purchase = {"used": 0.38, "new": 0.655}
 
         # Need to update
@@ -134,25 +133,13 @@ class Consumer(Agent):
 
         # Recycle PBC intention
         self.trade_in_id = None
-        
-        self.w_att_rc = 0.45
-        self.w_sn_rc = 0.35
-        self.w_pbc_rc = 0.35
-        self.w_mn_rc = 0.20
-        self.w_pc_rc = 0.15
-        self.w_md_rc = 0.20
-
-        self.w_att_pc_rc = 0.25
-        self.w_sn_pc_rc = 0.25
-        self.w_pbc_pc_rc = 0.25
-        self.w_mn_pc_rc = 0.25
 
         self.recycle_choices = ['manufacturer', 'recycler']
         self.att_recycle = {'manufacturer': 0.253, 'recycler': 0.545}
-        self.sn_recycle =  {'manufacturer': 0.455, 'recycler': 0.557}
-        self.pbc_recycle = {'manufacturer': 0.465, 'recycler': 0.775}
-        self.mn_recycle =  {'manufacturer': 0.155, 'recycler': 0.365}
-        self.pc_recycle =  {'manufacturer': 0.235, 'recycler': 0.235}
+        self.sn_recycle =  {'manufacturer': 0.000, 'recycler': 0.000}
+        self.pbc_recycle = {'manufacturer': 0.000, 'recycler': 0.000}
+        self.mn_recycle =  {'manufacturer': 0.255, 'recycler': 0.065}
+        self.pc_recycle =  {'manufacturer': 0.135, 'recycler': 0.135}
         self.md_recycle =  {'manufacturer': 0.265, 'recycler': 0.245}
         
         self.recycling_intention = {}
@@ -449,7 +436,6 @@ class Consumer(Agent):
         view_size = int(0.4 * self.model.num_sechdstores)
         sechdstores = random.choices(sechdstores, k=view_size)
         # Evaluate smartphones based on price and features
-        utilities = {}
         income2price = {}
         no_inventory = True
         for second_store in sechdstores:
@@ -538,26 +524,31 @@ class Consumer(Agent):
                                 if agent.recycle_action == c) / len(neighbor_agents)
 
         for c in self.recycle_choices:
-            # Combine privacy concern with attention, subjective norm, 
+            # Combine privacy concern with attention, subjective norm,
             # perceived behavioral control, and moral norm.
             self.md_recycle[c] = \
-                (0.605 * self.att_recycle[c] + \
-                 0.145 * self.sn_recycle[c] + \
-                 0.145 * self.pbc_recycle[c] + \
-                 0.105 * self.mn_recycle[c]) * self.pc_recycle[c]
+                (0.35 * self.att_recycle[c] + \
+                 0.15 * self.sn_recycle[c] + \
+                 0.25 * self.pbc_recycle[c] + \
+                 0.25 * self.mn_recycle[c]) * self.pc_recycle[c]
             
             # Calculate recycling intention based on the Theory of Planned Behavior, 
             # including moral norm and privacy concern. 
             self.recycling_intention[c] = \
-                0.10  * self.att_recycle[c] + \
-                0.05  * self.sn_recycle[c] + \
-                0.10  * self.pbc_recycle[c] + \
-                0.05  * self.mn_recycle[c] - \
-                0.455 * self.pc_recycle[c] - \
-                0.245 * self.md_recycle[c]
+                0.06 * self.att_recycle[c] + 0.03 * self.sn_recycle[c] + 0.25 * self.pbc_recycle[c] + \
+                0.05 * self.mn_recycle[c] - 0.155 * self.pc_recycle[c] - 0.145 * self.md_recycle[c]
         
-        if self.unique_id % 100 == 0:
-            print(f't={self.model.steps}, {self.unique_id}, {self.recycling_intention}')
+        # if self.unique_id % 100 == 0:
+        #     c = 'recycler'
+        #     print(f't={self.model.steps}, {self.unique_id}, {c}={self.recycling_intention[c]:.2f}, '
+        #           f'att={0.06*self.att_recycle[c]:.2f}, sn={0.025*self.sn_recycle[c]:.2f}, '
+        #           f'pbc={0.25*self.pbc_recycle[c]:.2f}, mn={0.05*self.mn_recycle[c]:.2f}, '
+        #           f'pc={0.155*self.pc_recycle[c]:.2f}, md={0.145*self.md_recycle[c]:.2f}')
+        #     c = 'manufacturer'
+        #     print(f't={self.model.steps}, {self.unique_id}, {c}={self.recycling_intention[c]:.2f}, '
+        #           f'att={0.06*self.att_recycle[c]:.2f}, sn={0.025*self.sn_recycle[c]:.2f}, '
+        #           f'pbc={0.25*self.pbc_recycle[c]:.2f}, mn={0.05*self.mn_recycle[c]:.2f}, '
+        #           f'pc={0.155*self.pc_recycle[c]:.2f}, md={0.145*self.md_recycle[c]:.2f}')
 
     def recycle_smartphone_extend_tpb(self):
         """

@@ -11,12 +11,12 @@ used_color = '#20B2AA'
 
 
 def plot_buying_action(results_df):
-    # plt.figure()
     f, (ax1, ax2) = plt.subplots(1, 2, sharex=True, sharey=True, figsize=(12, 6))
     ax1.plot(
         results_df["Step"],
         results_df["consumer_buying_new"],
         color=new_color)
+    ax1.set_xlabel("Month")
     ax1.set_title("Consumer Buying New")
     
     ax2.plot(
@@ -28,7 +28,7 @@ def plot_buying_action(results_df):
     # Set x-axis limits and ticks
     ax1.set_xlim(0, 120)  # Set x-axis range
     ax2.set_xlim(0, 120)
-    
+    ax2.set_xlabel("Month")
     ax1.set_xticks(range(0, 121, 24))  # Set axis ticks at intervals of 12
     ax2.set_xticks(range(0, 121, 24))
     plt.savefig(os.path.join(SAVE_DIR, 'agents_buying_actions.png'), dpi=FIG_DPI)
@@ -64,7 +64,7 @@ def plot_eol_action(results_df):
     
     plt.legend()
     plt.xticks(range(0, 121, 12))
-    plt.xlabel("Step")
+    plt.xlabel("Month")
     plt.ylabel("Agent Count")
     plt.title("Consumer Actions")
     plt.savefig(os.path.join(SAVE_DIR, 'agents_eol_actions.png'), dpi=FIG_DPI)
@@ -123,24 +123,47 @@ def plot_eol_pie(results_df):
     num_landfilling = results_df["consumer_landfilling"].sum()
     num_storing = results_df["consumer_storing"].sum()
     
+    num_rec_mnf = results_df["consumer_recycle_manufactor"].sum()
+    num_rec_rcl = results_df["consumer_recycle_recycler"].sum()
+    
     eol_array = np.array([num_proffer, num_selling, num_recycling, num_landfilling, num_storing])
-    labels = ['proffer', 'reselling', 'recycling', 'landfilling', 'storing']
-    colors = [
+    eol_labels = ['proffer', 'reselling', 'recycling', 'landfilling', 'storing']
+    eol_colors = [
         '#6495ED',
         '#8B008B', 
         '#008080',
         '#FF7F50',
         '#FFDAB9',
     ]
-    plt.figure()
-    plt.pie(
+    rec_array = np.array([num_rec_mnf, num_rec_rcl])
+    rec_labels = ['to manufacturer', 'to recycler']
+    rec_colors = ['#7FFFAA', '#FF7F50']  # 可根据喜好修改
+    
+    # 建立画布 + 两个子图
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+    
+    # -- 子图1：EOL Actions 总览 --
+    ax1.pie(
         eol_array,
-        labels=labels,
+        labels=eol_labels,
         autopct='%1.2f%%',
         startangle=140,
-        colors=colors
+        colors=eol_colors
     )
-    plt.title('EOL Actions Distribution')
+    ax1.set_title('EOL Actions Distribution')
+    
+    # -- 子图2：Recycling 内部分布 --
+    ax2.pie(
+        rec_array,
+        labels=rec_labels,
+        autopct='%1.2f%%',
+        startangle=140,
+        colors=rec_colors
+    )
+    ax2.set_title('Recycling Distribution')
+    
+    # 自动调整布局，防止重叠
+    plt.tight_layout()
     plt.savefig(os.path.join(SAVE_DIR, 'agents_eol_pie.png'), dpi=FIG_DPI)
     
     
