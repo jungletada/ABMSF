@@ -55,7 +55,7 @@ class Smartphone(Agent):
         self.material_value = 500 # material_value depends on the ingredients of product
         self.warranty_duration = 12 if self.is_new else 0  # New phones come with 6 months warranty
         self.resell_value = self.calculate_resell_price_sechnd()  # Value if resold in the second-hand market
-        
+
         # Recycle Service
         self.perf_rec = 0.1
         self.time_rec = 0.2
@@ -172,11 +172,11 @@ class Smartphone(Agent):
     def calculate_trade_in_value(self):
         """Model the Manufacturer Recycling for Trade-in (Old-for-New Service)"""
         if self.time_held <= 36:
-            disc = np.random.normal(0.47, 0.1)
+            disc = np.random.normal(0.52, 0.05) # np.random.normal(0.47, 0.1)
             trade_in_value = disc * (0.3 * self.performance + 0.0455 / (48 + self.time_held)) * self.purchase_price
             self.trade_in_value = max(trade_in_value, 50)
         else:
-            disc = np.random.normal(0.3, 0.1)
+            disc = np.random.normal(0.35, 0.05) # np.random.normal(0.3, 0.05)
             trade_in_value = disc * (0.3 * self.performance + 0.0455 / (72 + self.time_held)) * self.purchase_price
             self.trade_in_value = max(trade_in_value, 50)
         return self.trade_in_value
@@ -189,7 +189,7 @@ class Smartphone(Agent):
         Returns:
             float: The recycled price for the used smartphone.
         """
-        disc = np.random.normal(0.45, 0.05)
+        disc = np.random.normal(0.48, 0.05)  # np.random.normal(0.45, 0.05)
         self.recycle_price = disc * (0.3 * self.performance + 0.05 / (48 + self.time_held)) * self.purchase_price
         return self.recycle_price
 
