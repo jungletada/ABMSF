@@ -1,19 +1,20 @@
-2025-03-13 15:48:37,505 - batch_run.py - INFO: Index(['RunId', 'iteration', 'Step', 'avg_consumer_income', 'consumer_proffer',
-       'consumer_reselling', 'consumer_recycling', 'consumer_landfilling',
-       'consumer_storing', 'consumer_buying_new', 'consumer_buying_used',
-       'consumer_recycle_manufactor', 'consumer_recycle_recycler',
-       'avg_new_product_price', 'avg_used_product_price',
-       'new_price_to_income', 'used_price_to_income'],
+2025-03-27 16:16:19,845 - batch_run.py - INFO: Index(['Unnamed: 0', 'RunId', 'iteration', 'Step', 'avg_consumer_income',
+       'consumer_proffer', 'consumer_reselling', 'consumer_recycling',
+       'consumer_landfilling', 'consumer_storing', 'consumer_buying_new',
+       'consumer_buying_used', 'consumer_recycle_manufactor',
+       'consumer_recycle_recycler', 'avg_new_product_price',
+       'avg_used_product_price', 'new_price_to_income',
+       'used_price_to_income'],
       dtype='object')
-2025-03-13 15:48:41,200 - batch_run.py - INFO: 
+2025-03-27 16:16:24,122 - batch_run.py - INFO: 
 Consumers buying action=[51921  9079]
  new,   used 
 ['85.12', '14.88']
-2025-03-13 15:48:41,200 - batch_run.py - INFO: 
+2025-03-27 16:16:24,122 - batch_run.py - INFO: 
 Consumers EoL actions=[ 8897   701 25134   800 24468]
 proffer, resell, recycle, landfill, store
 ['14.83', '1.17', '41.89', '1.33', '40.78']
-2025-03-13 15:48:41,200 - batch_run.py - INFO: 
+2025-03-27 16:16:24,122 - batch_run.py - INFO: 
 Consumers recycling actions=[15327  9807]
 [ recycler,  manufacturer ]
 ['25.55', '16.35']

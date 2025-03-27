@@ -12,6 +12,7 @@ used_color = '#20B2AA'
 
 def plot_buying_action(results_df):
     f, (ax1, ax2) = plt.subplots(1, 2, sharex=True, sharey=True, figsize=(12, 6))
+
     ax1.plot(
         results_df["Step"],
         results_df["consumer_buying_new"],
@@ -32,6 +33,7 @@ def plot_buying_action(results_df):
     ax1.set_xticks(range(0, 121, 24))  # Set axis ticks at intervals of 12
     ax2.set_xticks(range(0, 121, 24))
     plt.savefig(os.path.join(SAVE_DIR, 'agents_buying_actions.png'), dpi=FIG_DPI)
+    plt.savefig(os.path.join(SAVE_DIR, 'agents_buying_actions.eps'), dpi=FIG_DPI)
 
 
 def plot_eol_action(results_df):
