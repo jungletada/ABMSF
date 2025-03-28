@@ -17,7 +17,7 @@ if __name__ == '__main__':
     os.makedirs('results', exist_ok=True)
     os.makedirs('logs', exist_ok=True)
 
-    csv_file = 'results/_output_batch.csv'
+    csv_file = 'results/_output_batch_2.csv'
     # results = mesa.batch_run(
     #     AgentBasedModel,
     #     parameters={},
@@ -30,7 +30,7 @@ if __name__ == '__main__':
     # results_df = pd.DataFrame(results)
     # results_df.to_csv(csv_file)
 
-    results_df = pd.read_csv('results/_output_batch.csv')
+    results_df = pd.read_csv(csv_file)
     setup_logger(filename='logs/ABM.log')
     logging.info(results_df.keys())
 

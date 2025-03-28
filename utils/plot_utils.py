@@ -1,4 +1,5 @@
 import os
+import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -34,6 +35,14 @@ def plot_buying_action(results_df):
     ax2.set_xticks(range(0, 121, 24))
     plt.savefig(os.path.join(SAVE_DIR, 'agents_buying_actions.png'), dpi=FIG_DPI)
     plt.savefig(os.path.join(SAVE_DIR, 'agents_buying_actions.eps'), dpi=FIG_DPI)
+     # 将 total_new 和 total_used 保存到 Excel 文件中
+    # df_totals = pd.DataFrame({
+    #     "Type": ["step, ""new", "used"],
+    #     "Total": [results_df["Step"], 
+    #               results_df["consumer_buying_new"], 
+    #               results_df["consumer_buying_used"]]
+    # })
+    # df_totals.to_excel(os.path.join(SAVE_DIR, 'agents_buying_totals.xlsx'), index=False)
 
 
 def plot_eol_action(results_df):
@@ -139,7 +148,7 @@ def plot_eol_pie(results_df):
     ]
     rec_array = np.array([num_rec_mnf, num_rec_rcl])
     rec_labels = ['to manufacturer', 'to recycler']
-    rec_colors = ['#7FFFAA', '#FF7F50']  # 可根据喜好修改
+    rec_colors = ['#9BBBE1', '#F09BA0'] 
     
     # 建立画布 + 两个子图
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))

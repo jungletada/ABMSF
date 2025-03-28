@@ -145,9 +145,10 @@ class Smartphone(Agent):
         """
         # Normalized repair cost (repair cost relative to new phone price)
         self.calculate_repair_cost()
+        alpha = 1.02 # 0.9
         normalized_repair_cost = self.repair_cost / self.purchase_price
-        self.resell_price = self.purchase_price * self.performance * \
-            (1 - normalized_repair_cost) * (0.475 + 2 / (self.time_held + 8)) * 0.9
+        self.resell_price = alpha * self.purchase_price * self.performance * \
+            (1 - normalized_repair_cost) * (0.475 + 2 / (self.time_held + 8))
         return self.resell_price
 
     def calculate_sechnd_market_price(self):
@@ -164,19 +165,20 @@ class Smartphone(Agent):
         """
         # Normalized repair cost (repair cost relative to new phone price)
         self.calculate_repair_cost()
+        alpha = 1.07 # 1.1
         normalized_repair_cost = self.repair_cost / self.purchase_price
-        self.secondhand_market_price = self.purchase_price * self.performance * \
-            (1 + normalized_repair_cost) * (0.475 + 2 / (self.time_held + 8)) * 1.1
+        self.secondhand_market_price = alpha * self.purchase_price * self.performance * \
+            (1 + normalized_repair_cost) * (0.475 + 2 / (self.time_held + 8))
         return self.secondhand_market_price
     
     def calculate_trade_in_value(self):
         """Model the Manufacturer Recycling for Trade-in (Old-for-New Service)"""
         if self.time_held <= 36:
-            disc = np.random.normal(0.52, 0.05) # np.random.normal(0.47, 0.1)
+            disc = np.random.normal(0.55, 0.01) # (0.478, 0.01),  GI -> 0.52, 0.01
             trade_in_value = disc * (0.3 * self.performance + 0.0455 / (48 + self.time_held)) * self.purchase_price
             self.trade_in_value = max(trade_in_value, 50)
         else:
-            disc = np.random.normal(0.35, 0.05) # np.random.normal(0.3, 0.05)
+            disc = np.random.normal(0.37, 0.01) # (0.33, 0.01), GI -> 0.35, 0.01
             trade_in_value = disc * (0.3 * self.performance + 0.0455 / (72 + self.time_held)) * self.purchase_price
             self.trade_in_value = max(trade_in_value, 50)
         return self.trade_in_value
@@ -189,7 +191,7 @@ class Smartphone(Agent):
         Returns:
             float: The recycled price for the used smartphone.
         """
-        disc = np.random.normal(0.48, 0.05)  # np.random.normal(0.45, 0.05)
+        disc = np.random.normal(0.50, 0.01)  # (0.45, 0.01) -> GI  0.50, 0.01
         self.recycle_price = disc * (0.3 * self.performance + 0.05 / (48 + self.time_held)) * self.purchase_price
         return self.recycle_price
 

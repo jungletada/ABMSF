@@ -77,9 +77,9 @@ class Consumer(Agent):
 
         self.resell_cost = 0
         self.recycle_cost = 0
-        self.proffer_cost = float(np.random.normal(-39, 0.5))
-        self.landfill_cost = float(np.random.normal(-1, 0.1))
-        self.store_cost = float(np.random.normal(-15, 0.25))
+        self.proffer_cost = float(np.random.normal(-35, 0.1)) # -39
+        self.landfill_cost = float(np.random.normal(-0.8, 0.1)) # -1
+        self.store_cost = float(np.random.normal(-13, 0.25)) # -15
         
         self.to_buy_new = 0
         self.to_buy_used = 0
@@ -331,8 +331,8 @@ class Consumer(Agent):
         self.recycle_cost = -self.smartphone.calculate_recycle_price()
         self.pbc_costs_eol = {
             "proffer": self.proffer_cost, 
-            "resell": self.resell_cost / self.income * 153.846, 
-            "recycle": self.recycle_cost / self.income * 666.667, 
+            "resell": self.resell_cost / self.income * 155, # 153.846
+            "recycle": self.recycle_cost / self.income * 667, # 666.667
             "landfill": self.landfill_cost, 
             "store": self.store_cost}
 
